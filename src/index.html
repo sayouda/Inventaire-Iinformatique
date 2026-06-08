@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Inventaire Matériel Informatique</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f5f5f3; --surface: #ffffff;
+    --border: #e2e0d8; --border2: #c8c6bc;
+    --text: #1a1a18; --muted: #6b6a65;
+    --accent: #1a1a18; --accent-fg: #ffffff;
+    --green-bg:#eaf3de; --green-fg:#27500a;
+    --amber-bg:#faeeda; --amber-fg:#633806;
+    --red-bg:#fcebeb;   --red-fg:#791f1f;
+    --blue-bg:#e6f1fb;  --blue-fg:#0c447c;
+    --radius:8px; --radius-lg:12px;
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; font-size:14px; background:var(--bg); color:var(--text); min-height:100vh; user-select:none; }
+  header { background:var(--surface); border-bottom:1px solid var(--border); padding:0 24px; display:flex; align-items:center; gap:14px; height:54px; -webkit-app-region:drag; }
+  header h1 { font-size:15px; font-weight:600; }
+  .dot { width:8px; height:8px; background:#3b6d11; border-radius:50%; }
+  .version { font-size:11px; color:var(--muted); margin-left:auto; }
+  .page { padding:18px 24px; max-width:1400px; margin:0 auto; }
+  .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin-bottom:18px; }
+  .stat { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:12px 16px; }
+  .stat-label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:5px; }
+  .stat-val { font-size:26px; font-weight:600; line-height:1; }
+  .toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:14px; }
+  input[type=text], select { height:36px; padding:0 10px; border:1px solid var(--border2); border-radius:var(--radius); background:var(--surface); color:var(--text); font-size:13px; outline:none; }
+  input[type=text]:focus, select:focus { border-color:#555; }
+  #search { width:220px; }
+  .btn { height:36px; padding:0 14px; border:1px solid var(--border2); border-radius:var(--radius); background:var(--surface); color:var(--text); font-size:13px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; white-space:nowrap; -webkit-app-region:no-drag; }
+  .btn:hover { background:var(--bg); }
+  .btn-primary { background:var(--accent); color:var(--accent-fg); border-color:var(--accent); }
+  .btn-primary:hover { opacity:.85; background:var(--accent); }
+  .btn-cols  { color:var(--blue-fg); border-color:#85b7eb; }
+  .btn-cols:hover  { background:var(--blue-bg); }
+  .btn-success { color:#27500a; border-color:#97c459; }
+  .btn-success:hover { background:var(--green-bg); }
+  .btn-info    { color:#185fa5; border-color:#85b7eb; }
+  .btn-info:hover    { background:var(--blue-bg); }
+  .sep { width:1px; height:24px; background:var(--border); margin:0 2px; }
+  .tbl-wrap { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.07); }
+  .tbl-scroll { overflow-x:auto; max-height:calc(100vh - 290px); }
+  table { width:100%; border-collapse:collapse; min-width:600px; }
+  thead th { position:sticky; top:0; z-index:2; text-align:left; padding:10px 12px; background:#fafaf8; border-bottom:1px solid var(--border); font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); cursor:pointer; user-select:none; white-space:nowrap; }
+  thead th:hover { color:var(--text); }
+  tbody tr { border-bottom:1px solid var(--border); }
+  tbody tr:last-child { border-bottom:none; }
+  tbody tr:hover { background:#fafaf8; }
+  td { padding:9px 12px; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:160px; }
+  td.act { overflow:visible; max-width:none; }
+  .inv { font-family:"Courier New",monospace; font-size:12px; color:var(--muted); }
+  .badge { display:inline-block; padding:3px 9px; border-radius:99px; font-size:11px; font-weight:600; }
+  .b-ok  { background:var(--green-bg); color:var(--green-fg); }
+  .b-rep { background:var(--amber-bg); color:var(--amber-fg); }
+  .b-hs  { background:var(--red-bg);   color:var(--red-fg); }
+  .b-stk { background:var(--blue-bg);  color:var(--blue-fg); }
+  .act-row { display:flex; gap:4px; }
+  .act-btn { width:28px; height:28px; border:1px solid var(--border2); border-radius:6px; background:var(--surface); cursor:pointer; display:inline-flex; align-items:center; justify-content:center; font-size:14px; }
+  .act-btn:hover { background:var(--bg); }
+  .act-btn.del:hover { background:var(--red-bg); border-color:#f09595; }
+  .empty { text-align:center; padding:48px 16px; color:var(--muted); }
+  /* PANEL COLONNES */
+  .panel-bg { position:fixed; inset:0; background:rgba(0,0,0,.4); display:flex; align-items:stretch; justify-content:flex-end; z-index:200; }
+  .panel { background:var(--surface); width:330px; display:flex; flex-direction:column; border-left:1px solid var(--border); box-shadow:-4px 0 20px rgba(0,0,0,.12); }
+  .panel-head { padding:18px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+  .panel-head h2 { font-size:15px; font-weight:600; }
+  .panel-body { flex:1; overflow-y:auto; padding:14px 16px; display:flex; flex-direction:column; gap:6px; }
+  .hint { font-size:12px; color:var(--muted); line-height:1.6; margin-bottom:6px; padding:8px 10px; background:var(--bg); border-radius:var(--radius); }
+  .col-item { display:flex; align-items:center; gap:8px; padding:9px 10px; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface); cursor:grab; }
+  .col-item.dragging { opacity:.4; }
+  .col-item.drag-over { border-color:#378add; background:var(--blue-bg); }
+  .col-handle { color:var(--muted); font-size:16px; cursor:grab; flex-shrink:0; }
+  .col-check { width:15px; height:15px; cursor:pointer; flex-shrink:0; accent-color:var(--accent); }
+  .col-name-input { flex:1; height:28px; font-size:13px; border:1px solid transparent; border-radius:5px; padding:0 6px; background:transparent; color:var(--text); }
+  .col-name-input:hover { border-color:var(--border2); }
+  .col-name-input:focus { border-color:#555; background:var(--bg); outline:none; }
+  .col-key { font-size:10px; color:var(--muted); font-family:monospace; flex-shrink:0; }
+  .panel-foot { padding:14px 16px; border-top:1px solid var(--border); display:flex; gap:8px; justify-content:flex-end; }
+  /* MODAL */
+  .overlay { position:fixed; inset:0; background:rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; z-index:100; padding:16px; }
+  .modal { background:var(--surface); border-radius:var(--radius-lg); width:480px; max-width:100%; max-height:90vh; overflow-y:auto; box-shadow:0 8px 32px rgba(0,0,0,.18); }
+  .modal-head { padding:20px 24px 0; display:flex; align-items:center; justify-content:space-between; }
+  .modal-head h2 { font-size:16px; font-weight:600; }
+  .close-btn { background:none; border:none; font-size:20px; cursor:pointer; color:var(--muted); border-radius:4px; padding:4px 6px; }
+  .close-btn:hover { background:var(--bg); }
+  .modal-body { padding:16px 24px 8px; display:grid; gap:12px; }
+  .field { display:flex; flex-direction:column; gap:4px; }
+  .field label { font-size:12px; font-weight:600; color:var(--muted); }
+  .field input, .field select { height:36px; width:100%; }
+  .frow { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .modal-foot { padding:12px 24px 20px; display:flex; justify-content:flex-end; gap:8px; }
+  .err-msg { color:#a32d2d; font-size:12px; padding:6px 10px; background:var(--red-bg); border-radius:6px; }
+  /* IMPORT */
+  .drop-zone { border:2px dashed var(--border2); border-radius:var(--radius-lg); padding:28px 16px; text-align:center; cursor:pointer; }
+  .drop-zone.drag-over { border-color:#378add; background:var(--blue-bg); }
+  .drop-zone input { display:none; }
+  .drop-icon { font-size:34px; margin-bottom:8px; }
+  .drop-text { font-size:13px; color:var(--muted); }
+  .preview-tbl { max-height:180px; overflow-y:auto; margin-top:10px; border:1px solid var(--border); border-radius:var(--radius); }
+  .preview-tbl table { min-width:0; }
+  .preview-tbl th { font-size:10px; padding:6px 8px; background:#fafaf8; }
+  .preview-tbl td { font-size:11px; padding:5px 8px; max-width:110px; }
+  footer { text-align:center; padding:12px; font-size:11px; color:var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <div class="dot"></div>
+  <h1>Inventaire Matériel Informatique</h1>
+  <span class="version">v1.1</span>
+</header>
+<div class="page">
+  <div class="stats" id="stats"></div>
+  <div class="toolbar">
+    <input type="text" id="search" placeholder="🔍 Rechercher…" oninput="render()"/>
+    <select id="fCat" onchange="render()">
+      <option value="">Toutes catégories</option>
+      <option>Ordinateur portable</option><option>Ordinateur fixe</option>
+      <option>Écran</option><option>Imprimante</option><option>Réseau</option>
+      <option>Accessoire</option><option>Serveur</option><option>Autre</option>
+    </select>
+    <select id="fEtat" onchange="render()">
+      <option value="">Tous états</option>
+      <option>En service</option><option>En réparation</option>
+      <option>Hors service</option><option>En stock</option>
+    </select>
+    <div class="sep"></div>
+    <button class="btn btn-primary" onclick="openAdd()">➕ Ajouter</button>
+    <button class="btn btn-cols"    onclick="openPanel()">⚙ Colonnes</button>
+    <button class="btn btn-info"    onclick="openImport()">📥 Importer Excel</button>
+    <button class="btn btn-success" onclick="exportExcel()">📤 Exporter Excel</button>
+    <button class="btn"             onclick="exportTemplate()">📋 Modèle Excel</button>
+  </div>
+  <div class="tbl-wrap">
+    <div class="tbl-scroll">
+      <table>
+        <thead id="thead"></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div id="empty" class="empty" style="display:none">📭 Aucun équipement trouvé</div>
+  </div>
+</div>
+<footer>Double-cliquez une ligne pour modifier &nbsp;·&nbsp; v1.1</footer>
+
+<!-- PANEL COLONNES -->
+<div id="panelBg" style="display:none" class="panel-bg" onclick="closePanelBg(event)">
+  <div class="panel" onclick="event.stopPropagation()">
+    <div class="panel-head">
+      <h2>⚙ Gérer les colonnes</h2>
+      <button class="btn" style="height:28px;padding:0 8px" onclick="closePanel()">✕</button>
+    </div>
+    <div class="panel-body">
+      <div class="hint">☰ Glissez pour réordonner &nbsp;·&nbsp; ✔ Cochez pour afficher/masquer &nbsp;·&nbsp; Cliquez le nom pour renommer</div>
+      <div id="colList"></div>
+    </div>
+    <div class="panel-foot">
+      <button class="btn" onclick="resetCols()">↺ Réinitialiser</button>
+      <button class="btn btn-primary" onclick="closePanel()">✔ Appliquer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL FORM -->
+<div class="overlay" id="formOv" style="display:none" onclick="closeOvBg(event,'formOv')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <h2 id="formTitle">Ajouter</h2>
+      <button class="close-btn" onclick="closeOv('formOv')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="formErr" class="err-msg" style="display:none"></div>
+      <div class="frow">
+        <div class="field"><label>N° Inventaire *</label><input type="text" id="f-inv" placeholder="INF-2024-001"/></div>
+        <div class="field"><label>Catégorie *</label>
+          <select id="f-cat" onchange="updMod()">
+            <option value="">--</option>
+            <option>Ordinateur portable</option><option>Ordinateur fixe</option>
+            <option>Écran</option><option>Imprimante</option><option>Réseau</option>
+            <option>Accessoire</option><option>Serveur</option><option>Autre</option>
+          </select>
+        </div>
+      </div>
+      <div class="field"><label>Désignation *</label><input type="text" id="f-nom"/></div>
+      <div class="frow">
+        <div class="field"><label>Modèle *</label><select id="f-mod"><option value="">-- catégorie d'abord --</option></select></div>
+        <div class="field"><label>Marque</label><input type="text" id="f-marque"/></div>
+      </div>
+      <div class="frow">
+        <div class="field"><label>N° Série</label><input type="text" id="f-serie"/></div>
+        <div class="field"><label>Affectation</label><input type="text" id="f-aff"/></div>
+      </div>
+      <div class="frow">
+        <div class="field"><label>État *</label>
+          <select id="f-etat"><option>En service</option><option>En réparation</option><option>Hors service</option><option>En stock</option></select>
+        </div>
+        <div class="field"><label>Date achat</label><input type="text" id="f-date" placeholder="01/01/2024"/></div>
+      </div>
+      <div class="field"><label>Observations</label><input type="text" id="f-obs"/></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeOv('formOv')">Annuler</button>
+      <button class="btn btn-primary" onclick="saveItem()">✔ Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL IMPORT -->
+<div class="overlay" id="impOv" style="display:none" onclick="closeOvBg(event,'impOv')">
+  <div class="modal" style="width:540px" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <h2>Importer depuis Excel</h2>
+      <button class="close-btn" onclick="closeOv('impOv')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()"
+           ondragover="dz(event,true)" ondragleave="dz(event,false)" ondrop="dropFile(event)">
+        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" onchange="loadFile(this.files[0])"/>
+        <div class="drop-icon">📂</div>
+        <div class="drop-text" id="dropText"><b>Cliquer</b> ou glisser-déposer un fichier<br><small>.xlsx / .xls / .csv</small></div>
+      </div>
+      <div id="prevBox" style="display:none">
+        <div style="font-size:12px;color:var(--muted);margin-top:10px" id="impInfo"></div>
+        <div class="preview-tbl" id="prevTable"></div>
+        <div style="margin-top:10px;display:flex;align-items:center;gap:8px">
+          <label style="font-size:12px;font-weight:600;color:var(--muted)">Mode :</label>
+          <select id="impMode" style="height:32px;font-size:12px">
+            <option value="add">Ajouter aux données existantes</option>
+            <option value="replace">Remplacer toutes les données</option>
+          </select>
+        </div>
+      </div>
+      <div id="impErr" class="err-msg" style="display:none;margin-top:8px"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeOv('impOv')">Annuler</button>
+      <button class="btn btn-primary" id="impBtn" style="display:none" onclick="confirmImport()">✔ Importer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const MODELES={"Ordinateur portable":["ThinkPad E15","ThinkPad X1 Carbon","Latitude 5520","Latitude 7420","EliteBook 840","EliteBook 850","VivoBook 15","ZenBook 14","MacBook Pro 14","MacBook Air M2","Inspiron 15","Autre"],"Ordinateur fixe":["ThinkCentre M720","ThinkCentre M920","EliteDesk 800 G6","OptiPlex 7090","ProDesk 400","iMac 24","Autre"],"Écran":["S24F350","S27F354","U2422H","U2722D","E27q","E24q","Autre"],"Imprimante":["LaserJet Pro M404","LaserJet Pro MFP M428","OfficeJet Pro 9020","Color LaserJet Pro M454","PIXMA TR8620","Autre"],"Réseau":["SG350-28","SG350-10","Catalyst 2960","UniFi Switch 24","FortiGate 60F","Autre"],"Accessoire":["MK270 Clavier+Souris","MX Keys Mini","MX Master 3","Webcam C920","Casque H540","Hub USB-C 7 ports","Onduleur APC 650VA","Autre"],"Serveur":["PowerEdge R540","PowerEdge R640","ProLiant DL380 Gen10","ProLiant ML110","ThinkSystem SR530","Autre"],"Autre":["Autre"]};
+
+let COLS=[
+  {key:'numInv',   label:'N° Inventaire', visible:true},
+  {key:'nom',      label:'Désignation',   visible:true},
+  {key:'categorie',label:'Catégorie',     visible:true},
+  {key:'modele',   label:'Modèle',        visible:true},
+  {key:'marque',   label:'Marque',        visible:true},
+  {key:'serie',    label:'N° Série',      visible:true},
+  {key:'affectation',label:'Affectation', visible:true},
+  {key:'etat',     label:'État',          visible:true},
+  {key:'date',     label:'Date achat',    visible:false},
+  {key:'obs',      label:'Observations',  visible:false},
+];
+const DEFAULT_COLS=JSON.parse(JSON.stringify(COLS));
+
+let items=[
+  {id:1,numInv:"INF-2024-001",nom:"Laptop Dell Latitude",categorie:"Ordinateur portable",modele:"Latitude 5520",marque:"Dell",serie:"DL-00145",affectation:"Direction",etat:"En service",date:"",obs:""},
+  {id:2,numInv:"INF-2024-002",nom:"PC Bureau HP",categorie:"Ordinateur fixe",modele:"EliteDesk 800 G6",marque:"HP",serie:"HP-00231",affectation:"Comptabilité",etat:"En service",date:"",obs:""},
+  {id:3,numInv:"INF-2024-003",nom:"Écran Samsung 24\"",categorie:"Écran",modele:"S24F350",marque:"Samsung",serie:"SM-00412",affectation:"Comptabilité",etat:"En service",date:"",obs:""},
+  {id:4,numInv:"INF-2024-004",nom:"Imprimante réseau HP",categorie:"Imprimante",modele:"LaserJet Pro MFP M428",marque:"HP",serie:"PR-00078",affectation:"RH",etat:"En réparation",date:"",obs:"Bac papier bloqué"},
+  {id:5,numInv:"INF-2024-005",nom:"Switch 24 ports",categorie:"Réseau",modele:"SG350-28",marque:"Cisco",serie:"SW-00019",affectation:"Salle serveurs",etat:"En service",date:"",obs:""},
+  {id:6,numInv:"INF-2024-006",nom:"Laptop Lenovo ThinkPad",categorie:"Ordinateur portable",modele:"ThinkPad E15",marque:"Lenovo",serie:"LN-00388",affectation:"Informatique",etat:"En service",date:"",obs:""},
+  {id:7,numInv:"INF-2024-007",nom:"Serveur Dell PowerEdge",categorie:"Serveur",modele:"PowerEdge R540",marque:"Dell",serie:"SV-00003",affectation:"Salle serveurs",etat:"En service",date:"",obs:""},
+  {id:8,numInv:"INF-2024-008",nom:"Laptop Asus VivoBook",categorie:"Ordinateur portable",modele:"VivoBook 15",marque:"Asus",serie:"AS-00501",affectation:"",etat:"En stock",date:"",obs:"Neuf non attribué"},
+  {id:9,numInv:"INF-2024-009",nom:"Clavier + Souris Logitech",categorie:"Accessoire",modele:"MK270 Clavier+Souris",marque:"Logitech",serie:"ACC-0012",affectation:"RH",etat:"En service",date:"",obs:""},
+  {id:10,numInv:"INF-2024-010",nom:"PC Bureau Lenovo",categorie:"Ordinateur fixe",modele:"ThinkCentre M720",marque:"Lenovo",serie:"LN-00197",affectation:"Marketing",etat:"Hors service",date:"",obs:"Carte mère défectueuse"},
+];
+let nextId=11,sortCol='numInv',sortDir=1,editId=null,pendingImport=[],dragSrc=null;
+
+function badge(e){const m={"En service":"b-ok","En réparation":"b-rep","Hors service":"b-hs","En stock":"b-stk"};return `<span class="badge ${m[e]||'b-ok'}">${e}</span>`;}
+
+function render(){
+  const q=document.getElementById('search').value.toLowerCase();
+  const fc=document.getElementById('fCat').value;
+  const fe=document.getElementById('fEtat').value;
+  const vis=COLS.filter(c=>c.visible);
+  let data=items.filter(i=>{
+    const txt=COLS.map(c=>i[c.key]||'').join(' ').toLowerCase();
+    return(!q||txt.includes(q))&&(!fc||i.categorie===fc)&&(!fe||i.etat===fe);
+  });
+  data.sort((a,b)=>String(a[sortCol]||'').localeCompare(String(b[sortCol]||''),'fr')*sortDir);
+  document.getElementById('thead').innerHTML='<tr>'+
+    vis.map(c=>`<th onclick="sortBy('${c.key}')">${c.label} <span id="s-${c.key}"></span></th>`).join('')+
+    '<th style="width:68px">Actions</th></tr>';
+  if(sortCol){const el=document.getElementById('s-'+sortCol);if(el)el.textContent=sortDir===1?' ↑':' ↓';}
+  document.getElementById('tbody').innerHTML=data.map(i=>`
+    <tr ondblclick="openEdit(${i.id})">
+      ${vis.map(c=>{
+        if(c.key==='etat')return `<td>${badge(i[c.key])}</td>`;
+        const v=i[c.key]||'—';
+        return `<td title="${v}"${c.key==='numInv'?' class="inv"':''}>${v}</td>`;
+      }).join('')}
+      <td class="act"><div class="act-row">
+        <button class="act-btn" onclick="openEdit(${i.id})" title="Modifier">✏️</button>
+        <button class="act-btn del" onclick="delItem(${i.id})" title="Supprimer">🗑️</button>
+      </div></td>
+    </tr>`).join('');
+  document.getElementById('empty').style.display=data.length?'none':'block';
+  updateStats();
+}
+function updateStats(){
+  const t=items.length,ok=items.filter(i=>i.etat==="En service").length,
+        rp=items.filter(i=>i.etat==="En réparation").length,hs=items.filter(i=>i.etat==="Hors service").length,st=items.filter(i=>i.etat==="En stock").length;
+  document.getElementById('stats').innerHTML=`
+    <div class="stat"><div class="stat-label">Total</div><div class="stat-val">${t}</div></div>
+    <div class="stat"><div class="stat-label">En service</div><div class="stat-val" style="color:#27500a">${ok}</div></div>
+    <div class="stat"><div class="stat-label">En réparation</div><div class="stat-val" style="color:#633806">${rp}</div></div>
+    <div class="stat"><div class="stat-label">Hors service</div><div class="stat-val" style="color:#791f1f">${hs}</div></div>
+    <div class="stat"><div class="stat-label">En stock</div><div class="stat-val" style="color:#0c447c">${st}</div></div>`;
+}
+function sortBy(col){if(sortCol===col)sortDir*=-1;else{sortCol=col;sortDir=1;}render();}
+
+/* PANEL */
+function openPanel(){renderColList();document.getElementById('panelBg').style.display='flex';}
+function closePanel(){document.getElementById('panelBg').style.display='none';render();}
+function closePanelBg(e){if(e.target===document.getElementById('panelBg'))closePanel();}
+function renderColList(){
+  const list=document.getElementById('colList');list.innerHTML='';
+  COLS.forEach((col,idx)=>{
+    const div=document.createElement('div');div.className='col-item';div.draggable=true;div.dataset.idx=idx;
+    div.innerHTML=`<span class="col-handle" style="cursor:grab;font-size:16px">⠿</span>
+      <input type="checkbox" class="col-check" ${col.visible?'checked':''} onchange="COLS[${idx}].visible=this.checked" title="Afficher/masquer"/>
+      <input type="text" class="col-name-input" value="${col.label}" onchange="COLS[${idx}].label=this.value.trim()||COLS[${idx}].label" title="Renommer"/>
+      <span class="col-key">${col.key}</span>`;
+    div.addEventListener('dragstart',e=>{dragSrc=idx;div.classList.add('dragging');e.dataTransfer.effectAllowed='move';});
+    div.addEventListener('dragend',()=>{div.classList.remove('dragging');document.querySelectorAll('.col-item').forEach(el=>el.classList.remove('drag-over'));});
+    div.addEventListener('dragover',e=>{e.preventDefault();div.classList.add('drag-over');});
+    div.addEventListener('dragleave',()=>div.classList.remove('drag-over'));
+    div.addEventListener('drop',e=>{e.preventDefault();div.classList.remove('drag-over');if(dragSrc===null||dragSrc===idx)return;const m=COLS.splice(dragSrc,1)[0];COLS.splice(idx,0,m);renderColList();});
+    list.appendChild(div);
+  });
+}
+function resetCols(){COLS=JSON.parse(JSON.stringify(DEFAULT_COLS));renderColList();}
+
+/* MODAL */
+function updMod(){const cat=document.getElementById('f-cat').value,sel=document.getElementById('f-mod'),cur=sel.value;const opts=MODELES[cat]||["Autre"];sel.innerHTML=opts.map(m=>`<option value="${m}"${m===cur?' selected':''}>${m}</option>`).join('');}
+function clearForm(){['f-inv','f-nom','f-marque','f-serie','f-aff','f-date','f-obs'].forEach(id=>document.getElementById(id).value='');document.getElementById('f-cat').value='';document.getElementById('f-etat').value='En service';document.getElementById('f-mod').innerHTML='<option value="">-- catégorie d\'abord --</option>';document.getElementById('formErr').style.display='none';}
+function openAdd(){editId=null;clearForm();document.getElementById('formTitle').textContent='Ajouter un équipement';document.getElementById('formOv').style.display='flex';document.getElementById('f-inv').focus();}
+function openEdit(id){
+  editId=id;const i=items.find(x=>x.id===id);
+  document.getElementById('formTitle').textContent="Modifier l'équipement";
+  document.getElementById('f-inv').value=i.numInv;document.getElementById('f-nom').value=i.nom;
+  document.getElementById('f-cat').value=i.categorie;updMod();document.getElementById('f-mod').value=i.modele;
+  document.getElementById('f-marque').value=i.marque;document.getElementById('f-serie').value=i.serie;
+  document.getElementById('f-aff').value=i.affectation;document.getElementById('f-etat').value=i.etat;
+  document.getElementById('f-date').value=i.date||'';document.getElementById('f-obs').value=i.obs;
+  document.getElementById('formErr').style.display='none';document.getElementById('formOv').style.display='flex';
+}
+function saveItem(){
+  const numInv=document.getElementById('f-inv').value.trim(),nom=document.getElementById('f-nom').value.trim(),cat=document.getElementById('f-cat').value,modele=document.getElementById('f-mod').value,errEl=document.getElementById('formErr');
+  if(!numInv||!nom||!cat||!modele){errEl.textContent='Remplir les champs obligatoires (*).';errEl.style.display='block';return;}
+  if(!editId&&items.find(x=>x.numInv===numInv)){errEl.textContent="Ce N° inventaire existe déjà.";errEl.style.display='block';return;}
+  const obj={id:editId||nextId++,numInv,nom,categorie:cat,modele,marque:document.getElementById('f-marque').value.trim(),serie:document.getElementById('f-serie').value.trim(),affectation:document.getElementById('f-aff').value.trim(),etat:document.getElementById('f-etat').value,date:document.getElementById('f-date').value.trim(),obs:document.getElementById('f-obs').value.trim()};
+  if(editId){const idx=items.findIndex(x=>x.id===editId);items[idx]=obj;}else items.push(obj);
+  closeOv('formOv');render();
+}
+function delItem(id){if(confirm('Supprimer cet équipement ?')){items=items.filter(x=>x.id!==id);render();}}
+function closeOv(id){document.getElementById(id).style.display='none';}
+function closeOvBg(e,id){if(e.target===document.getElementById(id))closeOv(id);}
+
+/* EXPORT */
+function exportExcel(){
+  const visCols=COLS.filter(c=>c.visible);
+  const wb=XLSX.utils.book_new();
+  const rows=[visCols.map(c=>c.label)].concat(items.map(i=>visCols.map(c=>i[c.key]||'')));
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=visCols.map(()=>({wch:18}));
+  XLSX.utils.book_append_sheet(wb,ws,'Inventaire');
+  XLSX.writeFile(wb,'Inventaire_Informatique.xlsx');
+}
+function exportTemplate(){
+  const allKeys=["numInv","nom","categorie","modele","marque","serie","affectation","etat","date","obs"];
+  const allLabels={"numInv":"N° Inventaire","nom":"Désignation","categorie":"Catégorie","modele":"Modèle","marque":"Marque","serie":"N° Série","affectation":"Affectation","etat":"État","date":"Date achat","obs":"Observations"};
+  const wb=XLSX.utils.book_new();
+  const rows=[allKeys.map(k=>allLabels[k]),["INF-2024-001","Laptop Dell Latitude","Ordinateur portable","Latitude 5520","Dell","DL-00145","Direction","En service","01/01/2024",""]];
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=allKeys.map(()=>({wch:18}));
+  XLSX.utils.book_append_sheet(wb,ws,'Inventaire');
+  XLSX.writeFile(wb,'Modele_Inventaire.xlsx');
+}
+
+/* IMPORT */
+function openImport(){pendingImport=[];document.getElementById('prevBox').style.display='none';document.getElementById('impBtn').style.display='none';document.getElementById('impErr').style.display='none';document.getElementById('fileInput').value='';document.getElementById('dropText').innerHTML='<b>Cliquer</b> ou glisser-déposer un fichier<br><small>.xlsx / .xls / .csv</small>';document.getElementById('impOv').style.display='flex';}
+function dz(e,on){e.preventDefault();document.getElementById('dropZone').classList.toggle('drag-over',on);}
+function dropFile(e){e.preventDefault();dz(e,false);const f=e.dataTransfer.files[0];if(f)loadFile(f);}
+function loadFile(file){
+  if(!file)return;
+  const errEl=document.getElementById('impErr');errEl.style.display='none';
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const wb=XLSX.read(e.target.result,{type:'binary'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const raw=XLSX.utils.sheet_to_json(ws,{defval:''});
+      if(!raw.length){errEl.textContent='Le fichier est vide.';errEl.style.display='block';return;}
+      const MAP={"N° Inventaire":"numInv","Désignation":"nom","Catégorie":"categorie","Modèle":"modele","Marque":"marque","N° Série":"serie","Affectation":"affectation","État":"etat","Date achat":"date","Observations":"obs","numInv":"numInv","nom":"nom","categorie":"categorie","modele":"modele","marque":"marque","serie":"serie","affectation":"affectation","etat":"etat","date":"date","obs":"obs"};
+      pendingImport=raw.map((row,i)=>{
+        const obj={id:null};
+        Object.keys(row).forEach(k=>{const key=MAP[k.trim()];if(key)obj[key]=String(row[k]||'').trim();});
+        if(!obj.numInv)obj.numInv='IMP-'+(i+1).toString().padStart(3,'0');
+        if(!obj.nom)obj.nom='Équipement importé';
+        if(!obj.categorie)obj.categorie='Autre';
+        if(!obj.modele)obj.modele='Autre';
+        if(!["En service","En réparation","Hors service","En stock"].includes(obj.etat))obj.etat='En service';
+        ["numInv","nom","categorie","modele","marque","serie","affectation","etat","date","obs"].forEach(c=>{if(!obj[c])obj[c]='';});
+        return obj;
+      });
+      const pC=["numInv","nom","categorie","modele","etat"],pL={"numInv":"N° Inventaire","nom":"Désignation","categorie":"Catégorie","modele":"Modèle","etat":"État"};
+      document.getElementById('prevTable').innerHTML=`<table><thead><tr>${pC.map(c=>`<th>${pL[c]}</th>`).join('')}</tr></thead><tbody>${pendingImport.slice(0,5).map(r=>`<tr>${pC.map(c=>`<td>${r[c]||'—'}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+      document.getElementById('impInfo').textContent=`${pendingImport.length} ligne(s) — aperçu des 5 premières`;
+      document.getElementById('prevBox').style.display='block';
+      document.getElementById('impBtn').style.display='inline-flex';
+      document.getElementById('dropText').innerHTML=`<b>${file.name}</b> chargé ✔`;
+    }catch(err){errEl.textContent='Erreur : '+err.message;errEl.style.display='block';}
+  };
+  reader.readAsBinaryString(file);
+}
+function confirmImport(){
+  if(!pendingImport.length)return;
+  if(document.getElementById('impMode').value==='replace'){items=[];nextId=1;}
+  pendingImport.forEach(row=>{if(items.find(x=>x.numInv===row.numInv))row.numInv=row.numInv+'-'+Date.now().toString().slice(-4);row.id=nextId++;items.push(row);});
+  closeOv('impOv');render();
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeOv('formOv');closeOv('impOv');if(document.getElementById('panelBg').style.display!=='none')closePanel();}});
+render();
+</script>
+</body>
+</html>
