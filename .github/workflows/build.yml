@@ -1,4 +1,4 @@
-yamlname: Build Windows EXE
+name: Build Windows EXE
 
 on:
   push:
@@ -23,9 +23,9 @@ jobs:
         run: npm install
 
       - name: Build Windows installer
-        run: npm run build
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run build
 
       - name: Upload EXE artifact
         uses: actions/upload-artifact@v4
@@ -33,6 +33,3 @@ jobs:
           name: Inventaire-Informatique-Windows
           path: dist/*.exe
           retention-days: 30
-4. Cliquez le bouton vert "Commit changes" → puis encore "Commit changes" dans la fenêtre qui apparaît
-
-Dites-moi quand c'est fait, on vérifie ensemble dans l'onglet Actions !Souhaitez-vous être averti lorsque Claude r
