@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Inventaire ISG TUNIS Version 1.0 Edité par Tarek SELMI </title>
+<title>Inventaire Matériel</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -142,6 +142,12 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:var(--ac
 footer{text-align:center;padding:14px;font-size:11px;color:var(--muted)}
 .btn-print{color:#5e4c00;border-color:#e6c84a;background:#fffae6}
 .btn-print:hover{background:#fff3c4}
+.btn-save{color:#006644;border-color:#79f2c0;background:#e3fcef}
+.btn-save:hover{background:#c6f6e0}
+.btn-load{color:#0747a6;border-color:#4c9aff;background:#deebff}
+.btn-load:hover{background:#c5d9f7}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a18;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.25);animation:fadeInUp .25s ease}
+@keyframes fadeInUp{from{opacity:0;transform:translateX(-50%) translateY(12px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
 /* MODAL ETATS */
 .modal-etats{width:700px;max-width:98vw}
 .etat-filters{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
@@ -177,7 +183,7 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--muted)}
 <div id="printZone" style="display:none"></div>
 <header>
   <span style="font-size:20px">🖥️</span>
-  <h1>Inventaire Matériel</h1>
+  <h1>Inventaire Matériel ISG TUNIS Edité par TSelmi</h1>
   <span class="pill" id="hdr-count">0 articles</span>
 </header>
 
@@ -197,6 +203,10 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--muted)}
     <button class="btn" onclick="exportTemplate()">📋 Modèle</button>
     <div class="sep"></div>
     <button class="btn btn-print" onclick="openEtats()">🖨️ États & Rapports</button>
+    <div class="sep"></div>
+    <button class="btn btn-save" onclick="saveJSON()" title="Sauvegarder les données">💾 Sauvegarder</button>
+    <button class="btn btn-load" onclick="document.getElementById('jsonInput').click()" title="Charger un fichier de données">📂 Charger</button>
+    <input type="file" id="jsonInput" accept=".json" style="display:none" onchange="loadJSON(this.files[0])"/>
   </div>
 
   <div id="batchBar" class="batch-bar" style="display:none">
@@ -960,6 +970,67 @@ function exportEtatExcel(){
   }
   const fname='Etat_'+type+'_'+new Date().toISOString().slice(0,10)+'.xlsx';
   XLSX.writeFile(wb,fname);
+}
+</script>
+
+
+<script>
+/* ═══════════════════════════════════════
+   SAUVEGARDE / CHARGEMENT JSON
+═══════════════════════════════════════ */
+function saveJSON(){
+  const data={
+    version:"2.0",
+    savedAt:new Date().toISOString(),
+    items:items,
+    nextId:nextId,
+    ref:REF
+  };
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download='inventaire_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('💾 Données sauvegardées !');
+}
+
+function loadJSON(file){
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const data=JSON.parse(e.target.result);
+      if(!data.items||!Array.isArray(data.items)){
+        alert('Fichier JSON invalide — format non reconnu.');return;
+      }
+      if(!confirm('Charger ces données remplacera les données actuelles. Continuer ?'))return;
+      items=data.items||[];
+      nextId=data.nextId||items.length+1;
+      if(data.ref){
+        if(data.ref.categories) REF.categories=data.ref.categories;
+        if(data.ref.modeles)    REF.modeles=data.ref.modeles;
+        if(data.ref.etats)      REF.etats=data.ref.etats;
+        if(data.ref.statuts)    REF.statuts=data.ref.statuts;
+      }
+      render();
+      showToast('📂 '+items.length+' article(s) chargé(s) avec succès !');
+    }catch(err){
+      alert('Erreur de lecture : '+err.message);
+    }
+  };
+  reader.readAsText(file);
+  document.getElementById('jsonInput').value='';
+}
+
+function showToast(msg){
+  const existing=document.querySelector('.toast');
+  if(existing)existing.remove();
+  const t=document.createElement('div');
+  t.className='toast';t.textContent=msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),3000);
 }
 </script>
 
