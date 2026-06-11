@@ -2,206 +2,221 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Inventaire Matériel Informatique</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Inventaire Matériel</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --bg: #f5f5f3; --surface: #ffffff;
-    --border: #e2e0d8; --border2: #c8c6bc;
-    --text: #1a1a18; --muted: #6b6a65;
-    --accent: #1a1a18; --accent-fg: #ffffff;
-    --green-bg:#eaf3de; --green-fg:#27500a;
-    --amber-bg:#faeeda; --amber-fg:#633806;
-    --red-bg:#fcebeb;   --red-fg:#791f1f;
-    --blue-bg:#e6f1fb;  --blue-fg:#0c447c;
-    --radius:8px; --radius-lg:12px;
-  }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; font-size:14px; background:var(--bg); color:var(--text); min-height:100vh; user-select:none; }
-  header { background:var(--surface); border-bottom:1px solid var(--border); padding:0 24px; display:flex; align-items:center; gap:14px; height:54px; -webkit-app-region:drag; }
-  header h1 { font-size:15px; font-weight:600; }
-  .dot { width:8px; height:8px; background:#3b6d11; border-radius:50%; }
-  .version { font-size:11px; color:var(--muted); margin-left:auto; }
-  .page { padding:18px 24px; max-width:1400px; margin:0 auto; }
-  .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin-bottom:18px; }
-  .stat { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:12px 16px; }
-  .stat-label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:5px; }
-  .stat-val { font-size:26px; font-weight:600; line-height:1; }
-  .toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:14px; }
-  input[type=text], select { height:36px; padding:0 10px; border:1px solid var(--border2); border-radius:var(--radius); background:var(--surface); color:var(--text); font-size:13px; outline:none; }
-  input[type=text]:focus, select:focus { border-color:#555; }
-  #search { width:220px; }
-  .btn { height:36px; padding:0 14px; border:1px solid var(--border2); border-radius:var(--radius); background:var(--surface); color:var(--text); font-size:13px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; white-space:nowrap; -webkit-app-region:no-drag; }
-  .btn:hover { background:var(--bg); }
-  .btn-primary { background:var(--accent); color:var(--accent-fg); border-color:var(--accent); }
-  .btn-primary:hover { opacity:.85; background:var(--accent); }
-  .btn-cols  { color:var(--blue-fg); border-color:#85b7eb; }
-  .btn-cols:hover  { background:var(--blue-bg); }
-  .btn-success { color:#27500a; border-color:#97c459; }
-  .btn-success:hover { background:var(--green-bg); }
-  .btn-info    { color:#185fa5; border-color:#85b7eb; }
-  .btn-info:hover    { background:var(--blue-bg); }
-  .sep { width:1px; height:24px; background:var(--border); margin:0 2px; }
-  .tbl-wrap { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.07); }
-  .tbl-scroll { overflow-x:auto; max-height:calc(100vh - 290px); }
-  table { width:100%; border-collapse:collapse; min-width:600px; }
-  thead th { position:sticky; top:0; z-index:2; text-align:left; padding:10px 12px; background:#fafaf8; border-bottom:1px solid var(--border); font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); cursor:pointer; user-select:none; white-space:nowrap; }
-  thead th:hover { color:var(--text); }
-  tbody tr { border-bottom:1px solid var(--border); }
-  tbody tr:last-child { border-bottom:none; }
-  tbody tr:hover { background:#fafaf8; }
-  td { padding:9px 12px; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:160px; }
-  td.act { overflow:visible; max-width:none; }
-  .inv { font-family:"Courier New",monospace; font-size:12px; color:var(--muted); }
-  .badge { display:inline-block; padding:3px 9px; border-radius:99px; font-size:11px; font-weight:600; }
-  .b-ok  { background:var(--green-bg); color:var(--green-fg); }
-  .b-rep { background:var(--amber-bg); color:var(--amber-fg); }
-  .b-hs  { background:var(--red-bg);   color:var(--red-fg); }
-  .b-stk { background:var(--blue-bg);  color:var(--blue-fg); }
-  .act-row { display:flex; gap:4px; }
-  .act-btn { width:28px; height:28px; border:1px solid var(--border2); border-radius:6px; background:var(--surface); cursor:pointer; display:inline-flex; align-items:center; justify-content:center; font-size:14px; }
-  .act-btn:hover { background:var(--bg); }
-  .act-btn.del:hover { background:var(--red-bg); border-color:#f09595; }
-  .empty { text-align:center; padding:48px 16px; color:var(--muted); }
-  /* PANEL COLONNES */
-  .panel-bg { position:fixed; inset:0; background:rgba(0,0,0,.4); display:flex; align-items:stretch; justify-content:flex-end; z-index:200; }
-  .panel { background:var(--surface); width:330px; display:flex; flex-direction:column; border-left:1px solid var(--border); box-shadow:-4px 0 20px rgba(0,0,0,.12); }
-  .panel-head { padding:18px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
-  .panel-head h2 { font-size:15px; font-weight:600; }
-  .panel-body { flex:1; overflow-y:auto; padding:14px 16px; display:flex; flex-direction:column; gap:6px; }
-  .hint { font-size:12px; color:var(--muted); line-height:1.6; margin-bottom:6px; padding:8px 10px; background:var(--bg); border-radius:var(--radius); }
-  .col-item { display:flex; align-items:center; gap:8px; padding:9px 10px; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface); cursor:grab; }
-  .col-item.dragging { opacity:.4; }
-  .col-item.drag-over { border-color:#378add; background:var(--blue-bg); }
-  .col-handle { color:var(--muted); font-size:16px; cursor:grab; flex-shrink:0; }
-  .col-check { width:15px; height:15px; cursor:pointer; flex-shrink:0; accent-color:var(--accent); }
-  .col-name-input { flex:1; height:28px; font-size:13px; border:1px solid transparent; border-radius:5px; padding:0 6px; background:transparent; color:var(--text); }
-  .col-name-input:hover { border-color:var(--border2); }
-  .col-name-input:focus { border-color:#555; background:var(--bg); outline:none; }
-  .col-key { font-size:10px; color:var(--muted); font-family:monospace; flex-shrink:0; }
-  .panel-foot { padding:14px 16px; border-top:1px solid var(--border); display:flex; gap:8px; justify-content:flex-end; }
-  /* MODAL */
-  .overlay { position:fixed; inset:0; background:rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; z-index:100; padding:16px; }
-  .modal { background:var(--surface); border-radius:var(--radius-lg); width:480px; max-width:100%; max-height:90vh; overflow-y:auto; box-shadow:0 8px 32px rgba(0,0,0,.18); }
-  .modal-head { padding:20px 24px 0; display:flex; align-items:center; justify-content:space-between; }
-  .modal-head h2 { font-size:16px; font-weight:600; }
-  .close-btn { background:none; border:none; font-size:20px; cursor:pointer; color:var(--muted); border-radius:4px; padding:4px 6px; }
-  .close-btn:hover { background:var(--bg); }
-  .modal-body { padding:16px 24px 8px; display:grid; gap:12px; }
-  .field { display:flex; flex-direction:column; gap:4px; }
-  .field label { font-size:12px; font-weight:600; color:var(--muted); }
-  .field input, .field select { height:36px; width:100%; }
-  .frow { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-  .modal-foot { padding:12px 24px 20px; display:flex; justify-content:flex-end; gap:8px; }
-  .err-msg { color:#a32d2d; font-size:12px; padding:6px 10px; background:var(--red-bg); border-radius:6px; }
-  /* IMPORT */
-  .drop-zone { border:2px dashed var(--border2); border-radius:var(--radius-lg); padding:28px 16px; text-align:center; cursor:pointer; }
-  .drop-zone.drag-over { border-color:#378add; background:var(--blue-bg); }
-  .drop-zone input { display:none; }
-  .drop-icon { font-size:34px; margin-bottom:8px; }
-  .drop-text { font-size:13px; color:var(--muted); }
-  .preview-tbl { max-height:180px; overflow-y:auto; margin-top:10px; border:1px solid var(--border); border-radius:var(--radius); }
-  .preview-tbl table { min-width:0; }
-  .preview-tbl th { font-size:10px; padding:6px 8px; background:#fafaf8; }
-  .preview-tbl td { font-size:11px; padding:5px 8px; max-width:110px; }
-  footer { text-align:center; padding:12px; font-size:11px; color:var(--muted); }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f0f2f5;--surface:#fff;--surface2:#f8f9fa;
+  --border:#dde1e7;--border2:#c1c7d0;
+  --text:#1d2125;--muted:#626f86;
+  --accent:#0052cc;--accent-fg:#fff;
+  --green-bg:#e3fcef;--green-fg:#006644;
+  --amber-bg:#fffae6;--amber-fg:#974f0c;
+  --red-bg:#ffebe6;--red-fg:#bf2600;
+  --blue-bg:#deebff;--blue-fg:#0747a6;
+  --purple-bg:#eae6ff;--purple-fg:#403294;
+  --radius:6px;--radius-lg:10px;
+  --shadow:0 1px 3px rgba(0,0,0,.1),0 1px 2px rgba(0,0,0,.06);
+  --font:'Segoe UI',system-ui,Arial,sans-serif;
+}
+body{font-family:var(--font);font-size:14px;background:var(--bg);color:var(--text);min-height:100vh}
+/* HEADER */
+header{background:var(--accent);color:#fff;padding:0 24px;height:52px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 8px rgba(0,82,204,.3)}
+header h1{font-size:15px;font-weight:600;letter-spacing:-.2px}
+header .pill{font-size:11px;background:rgba(255,255,255,.18);padding:2px 10px;border-radius:99px;margin-left:auto}
+/* PAGE */
+.page{padding:20px 24px;max-width:1500px;margin:0 auto}
+/* STATS */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:18px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px 16px;box-shadow:var(--shadow)}
+.stat-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.stat-val{font-size:24px;font-weight:700;line-height:1}
+/* TOOLBAR */
+.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:14px}
+input[type=text],select{height:34px;padding:0 10px;border:1px solid var(--border2);border-radius:var(--radius);background:var(--surface);color:var(--text);font-size:13px;outline:none;font-family:var(--font)}
+input[type=text]:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(0,82,204,.15)}
+#search{width:210px}
+.btn{height:34px;padding:0 14px;border:1px solid var(--border2);border-radius:var(--radius);background:var(--surface);color:var(--text);font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;font-family:var(--font);transition:background .1s}
+.btn:hover{background:var(--surface2)}
+.btn-primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.btn-primary:hover{background:#0747a6;border-color:#0747a6}
+.btn-danger{color:#bf2600;border-color:#ffbdad}
+.btn-danger:hover{background:var(--red-bg)}
+.btn-success{color:#006644;border-color:#79f2c0}
+.btn-success:hover{background:var(--green-bg)}
+.btn-info{color:#0747a6;border-color:#4c9aff}
+.btn-info:hover{background:var(--blue-bg)}
+.btn-settings{color:#403294;border-color:#b3a9ff}
+.btn-settings:hover{background:var(--purple-bg)}
+.sep{width:1px;height:22px;background:var(--border);margin:0 2px}
+/* BATCH BAR */
+.batch-bar{background:var(--blue-bg);border:1px solid #4c9aff;border-radius:var(--radius);padding:8px 14px;display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:13px;color:var(--blue-fg)}
+.batch-bar strong{font-weight:600}
+/* TABLE */
+.tbl-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;box-shadow:var(--shadow)}
+.tbl-scroll{overflow-x:auto;max-height:calc(100vh - 310px)}
+table{width:100%;border-collapse:collapse;min-width:900px}
+thead th{position:sticky;top:0;z-index:2;text-align:left;padding:9px 12px;background:var(--surface2);border-bottom:2px solid var(--border);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);white-space:nowrap;cursor:pointer;user-select:none}
+thead th:hover{color:var(--text)}
+thead th.th-check{cursor:default;width:36px}
+tbody tr{border-bottom:1px solid var(--border);transition:background .08s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:#f4f5f7}
+tbody tr.selected{background:#deebff}
+td{padding:9px 12px;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:170px}
+td.td-check{overflow:visible;max-width:36px;text-align:center}
+td.td-act{overflow:visible;max-width:none}
+.inv-num{font-family:'Courier New',monospace;font-size:12px;color:var(--muted);font-weight:600}
+/* BADGES */
+.badge{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:600;white-space:nowrap}
+.b-fonc{background:var(--green-bg);color:var(--green-fg)}
+.b-pan{background:var(--amber-bg);color:var(--amber-fg)}
+.b-hs{background:var(--red-bg);color:var(--red-fg)}
+.b-stk{background:var(--blue-bg);color:var(--blue-fg)}
+.b-rep{background:var(--purple-bg);color:var(--purple-fg)}
+/* STATUT BADGE */
+.s-serv{background:#e3fcef;color:#006644}
+.s-hs{background:#ffebe6;color:#bf2600}
+.s-hors{background:#fffae6;color:#974f0c}
+/* ACT BTNS */
+.act-row{display:flex;gap:4px}
+.act-btn{width:28px;height:28px;border:1px solid var(--border2);border-radius:var(--radius);background:var(--surface);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:13px;transition:background .1s}
+.act-btn:hover{background:var(--surface2)}
+.act-btn.del:hover{background:var(--red-bg);border-color:#ffbdad}
+/* CHECKBOX */
+input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:var(--accent)}
+/* EMPTY */
+.empty{text-align:center;padding:56px 16px;color:var(--muted)}
+.empty-icon{font-size:40px;margin-bottom:10px}
+/* OVERLAY */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px}
+.modal{background:var(--surface);border-radius:var(--radius-lg);width:500px;max-width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.2)}
+.modal.wide{width:640px}
+.modal-head{padding:20px 24px 0;display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.modal-head h2{font-size:16px;font-weight:700}
+.close-btn{background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);border-radius:4px;padding:4px 6px;line-height:1}
+.close-btn:hover{background:var(--surface2)}
+.modal-body{padding:0 24px 8px;display:grid;gap:12px}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+.field input,.field select,.field textarea{width:100%;height:34px;font-family:var(--font)}
+.field textarea{height:60px;padding:8px 10px;resize:vertical}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.frow3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.modal-foot{padding:14px 24px 20px;display:flex;justify-content:flex-end;gap:8px}
+.err{font-size:12px;color:#bf2600;background:var(--red-bg);padding:6px 10px;border-radius:var(--radius);border:1px solid #ffbdad}
+/* PANEL REFERENTIELS */
+.panel-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:stretch;justify-content:flex-end;z-index:200}
+.panel{background:var(--surface);width:420px;display:flex;flex-direction:column;box-shadow:-4px 0 24px rgba(0,0,0,.15)}
+.panel-head{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface2)}
+.panel-head h2{font-size:15px;font-weight:700}
+.panel-tabs{display:flex;border-bottom:1px solid var(--border)}
+.ptab{flex:1;padding:9px 4px;font-size:12px;font-weight:600;cursor:pointer;border:none;background:none;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;font-family:var(--font)}
+.ptab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.panel-body{flex:1;overflow-y:auto;padding:14px 16px}
+.ref-section{margin-bottom:20px}
+.ref-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:8px}
+.ref-list{display:flex;flex-direction:column;gap:4px}
+.ref-item{display:flex;align-items:center;gap:6px;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface)}
+.ref-item span{flex:1;font-size:13px}
+.ref-item input{flex:1;height:28px;font-size:13px;border:1px solid var(--border2);border-radius:4px;padding:0 6px;font-family:var(--font)}
+.ref-item input:focus{border-color:var(--accent);outline:none}
+.ref-smbtn{width:24px;height:24px;border:1px solid var(--border2);border-radius:4px;background:var(--surface);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+.ref-smbtn:hover{background:var(--surface2)}
+.ref-smbtn.del:hover{background:var(--red-bg);border-color:#ffbdad}
+.ref-add-row{display:flex;gap:6px;margin-top:8px}
+.ref-add-row input{flex:1;height:32px}
+.panel-foot{padding:12px 16px;border-top:1px solid var(--border);display:flex;justify-content:flex-end}
+/* IMPORT */
+.drop-zone{border:2px dashed var(--border2);border-radius:var(--radius-lg);padding:28px 16px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s}
+.drop-zone:hover,.drop-zone.drag-over{border-color:var(--accent);background:var(--blue-bg)}
+.drop-zone input{display:none}
+.drop-icon{font-size:36px;margin-bottom:8px}
+.drop-text{font-size:13px;color:var(--muted)}
+.prev-tbl{max-height:180px;overflow-y:auto;margin-top:10px;border:1px solid var(--border);border-radius:var(--radius)}
+.prev-tbl table{min-width:0}
+.prev-tbl th{font-size:10px;padding:6px 8px;background:var(--surface2)}
+.prev-tbl td{font-size:11px;padding:5px 8px;max-width:110px}
+footer{text-align:center;padding:14px;font-size:11px;color:var(--muted)}
 </style>
 </head>
 <body>
 <header>
-  <div class="dot"></div>
-  <h1>Inventaire Matériel Informatique</h1>
-  <span class="version">v1.1</span>
+  <span style="font-size:20px">🖥️</span>
+  <h1>Inventaire Matériel</h1>
+  <span class="pill" id="hdr-count">0 articles</span>
 </header>
+
 <div class="page">
   <div class="stats" id="stats"></div>
+
   <div class="toolbar">
     <input type="text" id="search" placeholder="🔍 Rechercher…" oninput="render()"/>
-    <select id="fCat" onchange="render()">
-      <option value="">Toutes catégories</option>
-      <option>Ordinateur portable</option><option>Ordinateur fixe</option>
-      <option>Écran</option><option>Imprimante</option><option>Réseau</option>
-      <option>Accessoire</option><option>Serveur</option><option>Autre</option>
-    </select>
-    <select id="fEtat" onchange="render()">
-      <option value="">Tous états</option>
-      <option>En service</option><option>En réparation</option>
-      <option>Hors service</option><option>En stock</option>
-    </select>
+    <select id="fCat" onchange="render()"><option value="">Toutes catégories</option></select>
+    <select id="fEtat" onchange="render()"><option value="">Tous états</option></select>
+    <select id="fStatut" onchange="render()"><option value="">Tous statuts</option></select>
     <div class="sep"></div>
     <button class="btn btn-primary" onclick="openAdd()">➕ Ajouter</button>
-    <button class="btn btn-cols"    onclick="openPanel()">⚙ Colonnes</button>
-    <button class="btn btn-info"    onclick="openImport()">📥 Importer Excel</button>
+    <button class="btn btn-settings" onclick="openPanel()">⚙ Référentiels</button>
+    <button class="btn btn-info" onclick="openImport()">📥 Importer Excel</button>
     <button class="btn btn-success" onclick="exportExcel()">📤 Exporter Excel</button>
-    <button class="btn"             onclick="exportTemplate()">📋 Modèle Excel</button>
+    <button class="btn" onclick="exportTemplate()">📋 Modèle</button>
   </div>
-  <div class="tbl-wrap">
+
+  <div id="batchBar" class="batch-bar" style="display:none">
+    <strong id="batchCount">0 sélectionné(s)</strong>
+    <button class="btn btn-danger" style="height:28px;padding:0 10px;font-size:12px" onclick="deleteSelected()">🗑️ Supprimer la sélection</button>
+    <button class="btn" style="height:28px;padding:0 10px;font-size:12px" onclick="clearSelection()">✕ Annuler</button>
+  </div>
+
+  <div class="tbl-card">
     <div class="tbl-scroll">
       <table>
         <thead id="thead"></thead>
         <tbody id="tbody"></tbody>
       </table>
     </div>
-    <div id="empty" class="empty" style="display:none">📭 Aucun équipement trouvé</div>
+    <div id="empty" class="empty" style="display:none">
+      <div class="empty-icon">📭</div>
+      Aucun équipement trouvé
+    </div>
   </div>
 </div>
-<footer>Double-cliquez une ligne pour modifier &nbsp;·&nbsp; v1.1</footer>
 
-<!-- PANEL COLONNES -->
-<div id="panelBg" style="display:none" class="panel-bg" onclick="closePanelBg(event)">
-  <div class="panel" onclick="event.stopPropagation()">
-    <div class="panel-head">
-      <h2>⚙ Gérer les colonnes</h2>
-      <button class="btn" style="height:28px;padding:0 8px" onclick="closePanel()">✕</button>
-    </div>
-    <div class="panel-body">
-      <div class="hint">☰ Glissez pour réordonner &nbsp;·&nbsp; ✔ Cochez pour afficher/masquer &nbsp;·&nbsp; Cliquez le nom pour renommer</div>
-      <div id="colList"></div>
-    </div>
-    <div class="panel-foot">
-      <button class="btn" onclick="resetCols()">↺ Réinitialiser</button>
-      <button class="btn btn-primary" onclick="closePanel()">✔ Appliquer</button>
-    </div>
-  </div>
-</div>
+<footer>Double-cliquez une ligne pour modifier &nbsp;·&nbsp; Inventaire Matériel v2.0</footer>
 
 <!-- MODAL FORM -->
 <div class="overlay" id="formOv" style="display:none" onclick="closeOvBg(event,'formOv')">
   <div class="modal" onclick="event.stopPropagation()">
     <div class="modal-head">
-      <h2 id="formTitle">Ajouter</h2>
+      <h2 id="formTitle">Ajouter un équipement</h2>
       <button class="close-btn" onclick="closeOv('formOv')">✕</button>
     </div>
     <div class="modal-body">
-      <div id="formErr" class="err-msg" style="display:none"></div>
+      <div id="formErr" class="err" style="display:none"></div>
       <div class="frow">
-        <div class="field"><label>N° Inventaire *</label><input type="text" id="f-inv" placeholder="INF-2024-001"/></div>
-        <div class="field"><label>Catégorie *</label>
-          <select id="f-cat" onchange="updMod()">
-            <option value="">--</option>
-            <option>Ordinateur portable</option><option>Ordinateur fixe</option>
-            <option>Écran</option><option>Imprimante</option><option>Réseau</option>
-            <option>Accessoire</option><option>Serveur</option><option>Autre</option>
-          </select>
-        </div>
-      </div>
-      <div class="field"><label>Désignation *</label><input type="text" id="f-nom"/></div>
-      <div class="frow">
-        <div class="field"><label>Modèle *</label><select id="f-mod"><option value="">-- catégorie d'abord --</option></select></div>
-        <div class="field"><label>Marque</label><input type="text" id="f-marque"/></div>
+        <div class="field"><label>N° Inventaire *</label><input type="text" id="f-inv" placeholder="ex: 211/1"/></div>
+        <div class="field"><label>Catégorie *</label><select id="f-cat" onchange="updModeles()"></select></div>
       </div>
       <div class="frow">
-        <div class="field"><label>N° Série</label><input type="text" id="f-serie"/></div>
-        <div class="field"><label>Affectation</label><input type="text" id="f-aff"/></div>
+        <div class="field"><label>Désignation *</label><input type="text" id="f-nom" placeholder="ex: Caméra"/></div>
+        <div class="field"><label>Modèle</label><select id="f-modele"></select></div>
       </div>
       <div class="frow">
-        <div class="field"><label>État *</label>
-          <select id="f-etat"><option>En service</option><option>En réparation</option><option>Hors service</option><option>En stock</option></select>
-        </div>
-        <div class="field"><label>Date achat</label><input type="text" id="f-date" placeholder="01/01/2024"/></div>
+        <div class="field"><label>N° Série</label><input type="text" id="f-serie" placeholder="ex: F398175000042"/></div>
+        <div class="field"><label>Nombre</label><input type="number" id="f-nb" value="1" min="1" style="height:34px;width:100%;padding:0 10px;border:1px solid var(--border2);border-radius:var(--radius);font-family:var(--font)"/></div>
       </div>
-      <div class="field"><label>Observations</label><input type="text" id="f-obs"/></div>
+      <div class="frow">
+        <div class="field"><label>Affectation</label><input type="text" id="f-aff" placeholder="ex: Magasin"/></div>
+        <div class="field"><label>Bénéficiaire</label><input type="text" id="f-ben" placeholder="ex: John"/></div>
+      </div>
+      <div class="frow">
+        <div class="field"><label>État *</label><select id="f-etat"></select></div>
+        <div class="field"><label>Statut *</label><select id="f-statut"></select></div>
+      </div>
+      <div class="field"><label>Observations</label><textarea id="f-obs" placeholder="Optionnel…"></textarea></div>
     </div>
     <div class="modal-foot">
       <button class="btn" onclick="closeOv('formOv')">Annuler</button>
@@ -210,9 +225,29 @@
   </div>
 </div>
 
+<!-- PANEL REFERENTIELS -->
+<div id="panelBg" style="display:none" class="panel-bg" onclick="closePanelBg(event)">
+  <div class="panel" onclick="event.stopPropagation()">
+    <div class="panel-head">
+      <h2>⚙ Référentiels</h2>
+      <button class="btn" style="height:28px;padding:0 8px" onclick="closePanel()">✕ Fermer</button>
+    </div>
+    <div class="panel-tabs">
+      <button class="ptab active" onclick="switchPTab('cat',this)">Catégories</button>
+      <button class="ptab" onclick="switchPTab('mod',this)">Modèles</button>
+      <button class="ptab" onclick="switchPTab('etat',this)">États</button>
+      <button class="ptab" onclick="switchPTab('statut',this)">Statuts</button>
+    </div>
+    <div class="panel-body" id="panelBody"></div>
+    <div class="panel-foot">
+      <button class="btn btn-primary" onclick="closePanel()">✔ Appliquer</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL IMPORT -->
 <div class="overlay" id="impOv" style="display:none" onclick="closeOvBg(event,'impOv')">
-  <div class="modal" style="width:540px" onclick="event.stopPropagation()">
+  <div class="modal wide" onclick="event.stopPropagation()">
     <div class="modal-head">
       <h2>Importer depuis Excel</h2>
       <button class="close-btn" onclick="closeOv('impOv')">✕</button>
@@ -222,20 +257,20 @@
            ondragover="dz(event,true)" ondragleave="dz(event,false)" ondrop="dropFile(event)">
         <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" onchange="loadFile(this.files[0])"/>
         <div class="drop-icon">📂</div>
-        <div class="drop-text" id="dropText"><b>Cliquer</b> ou glisser-déposer un fichier<br><small>.xlsx / .xls / .csv</small></div>
+        <div class="drop-text" id="dropText"><b>Cliquer</b> ou glisser-déposer<br><small>.xlsx / .xls / .csv</small></div>
       </div>
       <div id="prevBox" style="display:none">
         <div style="font-size:12px;color:var(--muted);margin-top:10px" id="impInfo"></div>
-        <div class="preview-tbl" id="prevTable"></div>
+        <div class="prev-tbl" id="prevTable"></div>
         <div style="margin-top:10px;display:flex;align-items:center;gap:8px">
-          <label style="font-size:12px;font-weight:600;color:var(--muted)">Mode :</label>
+          <label style="font-size:12px;font-weight:700;color:var(--muted)">Mode :</label>
           <select id="impMode" style="height:32px;font-size:12px">
             <option value="add">Ajouter aux données existantes</option>
             <option value="replace">Remplacer toutes les données</option>
           </select>
         </div>
       </div>
-      <div id="impErr" class="err-msg" style="display:none;margin-top:8px"></div>
+      <div id="impErr" class="err" style="display:none;margin-top:8px"></div>
     </div>
     <div class="modal-foot">
       <button class="btn" onclick="closeOv('impOv')">Annuler</button>
@@ -245,180 +280,392 @@
 </div>
 
 <script>
-const MODELES={"Ordinateur portable":["ThinkPad E15","ThinkPad X1 Carbon","Latitude 5520","Latitude 7420","EliteBook 840","EliteBook 850","VivoBook 15","ZenBook 14","MacBook Pro 14","MacBook Air M2","Inspiron 15","Autre"],"Ordinateur fixe":["ThinkCentre M720","ThinkCentre M920","EliteDesk 800 G6","OptiPlex 7090","ProDesk 400","iMac 24","Autre"],"Écran":["S24F350","S27F354","U2422H","U2722D","E27q","E24q","Autre"],"Imprimante":["LaserJet Pro M404","LaserJet Pro MFP M428","OfficeJet Pro 9020","Color LaserJet Pro M454","PIXMA TR8620","Autre"],"Réseau":["SG350-28","SG350-10","Catalyst 2960","UniFi Switch 24","FortiGate 60F","Autre"],"Accessoire":["MK270 Clavier+Souris","MX Keys Mini","MX Master 3","Webcam C920","Casque H540","Hub USB-C 7 ports","Onduleur APC 650VA","Autre"],"Serveur":["PowerEdge R540","PowerEdge R640","ProLiant DL380 Gen10","ProLiant ML110","ThinkSystem SR530","Autre"],"Autre":["Autre"]};
+/* ═══════════════════════════════════════
+   RÉFÉRENTIELS (éditables)
+═══════════════════════════════════════ */
+let REF = {
+  categories: ["Matériel Audio Visuel","Ordinateur portable","Ordinateur fixe","Écran","Imprimante","Réseau","Accessoire","Serveur","Téléphonie","Autre"],
+  modeles: {
+    "Matériel Audio Visuel": ["Panasonic","Sony","Canon","JVC","Autre"],
+    "Ordinateur portable": ["ThinkPad E15","Latitude 5520","EliteBook 840","VivoBook 15","MacBook Pro","Autre"],
+    "Ordinateur fixe": ["EliteDesk 800 G6","ThinkCentre M720","OptiPlex 7090","iMac 24","Autre"],
+    "Écran": ["S24F350","U2422H","E27q","Autre"],
+    "Imprimante": ["LaserJet Pro M404","LaserJet Pro MFP M428","OfficeJet Pro 9020","Autre"],
+    "Réseau": ["SG350-28","Catalyst 2960","UniFi Switch 24","Autre"],
+    "Accessoire": ["MK270","MX Master 3","Webcam C920","Hub USB-C","Autre"],
+    "Serveur": ["PowerEdge R540","ProLiant DL380","ThinkSystem SR530","Autre"],
+    "Téléphonie": ["iPhone","Samsung Galaxy","Cisco IP Phone","Autre"],
+    "Autre": ["Autre"]
+  },
+  etats: ["Fonctionnel","En panne","En réparation","En stock","Hors service"],
+  statuts: ["En service","Hors service","En attente"]
+};
 
-let COLS=[
-  {key:'numInv',   label:'N° Inventaire', visible:true},
-  {key:'nom',      label:'Désignation',   visible:true},
-  {key:'categorie',label:'Catégorie',     visible:true},
-  {key:'modele',   label:'Modèle',        visible:true},
-  {key:'marque',   label:'Marque',        visible:true},
-  {key:'serie',    label:'N° Série',      visible:true},
-  {key:'affectation',label:'Affectation', visible:true},
-  {key:'etat',     label:'État',          visible:true},
-  {key:'date',     label:'Date achat',    visible:false},
-  {key:'obs',      label:'Observations',  visible:false},
+/* ═══════════════════════════════════════
+   DONNÉES
+═══════════════════════════════════════ */
+let items = [
+  {id:1,numInv:"211/1",categorie:"Matériel Audio Visuel",nom:"Caméra",modele:"Panasonic",serie:"F398175000042",nb:1,affectation:"Magasin",beneficiaire:"John",etat:"Fonctionnel",statut:"Hors service",obs:""}
 ];
-const DEFAULT_COLS=JSON.parse(JSON.stringify(COLS));
+let nextId=2, sortCol='numInv', sortDir=1, editId=null, pendingImport=[], selected=new Set();
+let curPTab='cat';
 
-let items=[
-  {id:1,numInv:"INF-2024-001",nom:"Laptop Dell Latitude",categorie:"Ordinateur portable",modele:"Latitude 5520",marque:"Dell",serie:"DL-00145",affectation:"Direction",etat:"En service",date:"",obs:""},
-  {id:2,numInv:"INF-2024-002",nom:"PC Bureau HP",categorie:"Ordinateur fixe",modele:"EliteDesk 800 G6",marque:"HP",serie:"HP-00231",affectation:"Comptabilité",etat:"En service",date:"",obs:""},
-  {id:3,numInv:"INF-2024-003",nom:"Écran Samsung 24\"",categorie:"Écran",modele:"S24F350",marque:"Samsung",serie:"SM-00412",affectation:"Comptabilité",etat:"En service",date:"",obs:""},
-  {id:4,numInv:"INF-2024-004",nom:"Imprimante réseau HP",categorie:"Imprimante",modele:"LaserJet Pro MFP M428",marque:"HP",serie:"PR-00078",affectation:"RH",etat:"En réparation",date:"",obs:"Bac papier bloqué"},
-  {id:5,numInv:"INF-2024-005",nom:"Switch 24 ports",categorie:"Réseau",modele:"SG350-28",marque:"Cisco",serie:"SW-00019",affectation:"Salle serveurs",etat:"En service",date:"",obs:""},
-  {id:6,numInv:"INF-2024-006",nom:"Laptop Lenovo ThinkPad",categorie:"Ordinateur portable",modele:"ThinkPad E15",marque:"Lenovo",serie:"LN-00388",affectation:"Informatique",etat:"En service",date:"",obs:""},
-  {id:7,numInv:"INF-2024-007",nom:"Serveur Dell PowerEdge",categorie:"Serveur",modele:"PowerEdge R540",marque:"Dell",serie:"SV-00003",affectation:"Salle serveurs",etat:"En service",date:"",obs:""},
-  {id:8,numInv:"INF-2024-008",nom:"Laptop Asus VivoBook",categorie:"Ordinateur portable",modele:"VivoBook 15",marque:"Asus",serie:"AS-00501",affectation:"",etat:"En stock",date:"",obs:"Neuf non attribué"},
-  {id:9,numInv:"INF-2024-009",nom:"Clavier + Souris Logitech",categorie:"Accessoire",modele:"MK270 Clavier+Souris",marque:"Logitech",serie:"ACC-0012",affectation:"RH",etat:"En service",date:"",obs:""},
-  {id:10,numInv:"INF-2024-010",nom:"PC Bureau Lenovo",categorie:"Ordinateur fixe",modele:"ThinkCentre M720",marque:"Lenovo",serie:"LN-00197",affectation:"Marketing",etat:"Hors service",date:"",obs:"Carte mère défectueuse"},
-];
-let nextId=11,sortCol='numInv',sortDir=1,editId=null,pendingImport=[],dragSrc=null;
+/* ═══════════════════════════════════════
+   RENDER TABLE
+═══════════════════════════════════════ */
+const ETAT_CLS={"Fonctionnel":"b-fonc","En panne":"b-pan","Hors service":"b-hs","En stock":"b-stk","En réparation":"b-rep"};
+const STAT_CLS={"En service":"s-serv","Hors service":"s-hs","En attente":"s-hors"};
 
-function badge(e){const m={"En service":"b-ok","En réparation":"b-rep","Hors service":"b-hs","En stock":"b-stk"};return `<span class="badge ${m[e]||'b-ok'}">${e}</span>`;}
+function etatBadge(e){return `<span class="badge ${ETAT_CLS[e]||'b-stk'}">${e}</span>`;}
+function statutBadge(s){return `<span class="badge ${STAT_CLS[s]||'s-hors'}">${s}</span>`;}
 
 function render(){
   const q=document.getElementById('search').value.toLowerCase();
   const fc=document.getElementById('fCat').value;
   const fe=document.getElementById('fEtat').value;
-  const vis=COLS.filter(c=>c.visible);
+  const fs=document.getElementById('fStatut').value;
   let data=items.filter(i=>{
-    const txt=COLS.map(c=>i[c.key]||'').join(' ').toLowerCase();
-    return(!q||txt.includes(q))&&(!fc||i.categorie===fc)&&(!fe||i.etat===fe);
+    const txt=[i.numInv,i.categorie,i.nom,i.modele,i.serie,i.affectation,i.beneficiaire,i.etat,i.statut,i.obs].join(' ').toLowerCase();
+    return(!q||txt.includes(q))&&(!fc||i.categorie===fc)&&(!fe||i.etat===fe)&&(!fs||i.statut===fs);
   });
   data.sort((a,b)=>String(a[sortCol]||'').localeCompare(String(b[sortCol]||''),'fr')*sortDir);
-  document.getElementById('thead').innerHTML='<tr>'+
-    vis.map(c=>`<th onclick="sortBy('${c.key}')">${c.label} <span id="s-${c.key}"></span></th>`).join('')+
-    '<th style="width:68px">Actions</th></tr>';
-  if(sortCol){const el=document.getElementById('s-'+sortCol);if(el)el.textContent=sortDir===1?' ↑':' ↓';}
+
+  // thead
+  const cols=[
+    {k:'numInv',l:'N° Inventaire',w:'100px'},
+    {k:'categorie',l:'Catégorie',w:'130px'},
+    {k:'nom',l:'Désignation',w:'130px'},
+    {k:'modele',l:'Modèle',w:'110px'},
+    {k:'serie',l:'N° Série',w:'120px'},
+    {k:'nb',l:'Nombre',w:'70px'},
+    {k:'affectation',l:'Affectation',w:'100px'},
+    {k:'beneficiaire',l:'Bénéficiaire',w:'100px'},
+    {k:'etat',l:'État',w:'110px'},
+    {k:'statut',l:'Statut',w:'100px'},
+  ];
+  const allChecked=data.length>0&&data.every(i=>selected.has(i.id));
+  document.getElementById('thead').innerHTML=`<tr>
+    <th class="th-check"><input type="checkbox" ${allChecked?'checked':''} onchange="toggleAll(this.checked,${JSON.stringify(data.map(i=>i.id))})"/></th>
+    ${cols.map(c=>`<th style="min-width:${c.w}" onclick="sortBy('${c.k}')">${c.l}${sortCol===c.k?(sortDir===1?' ↑':' ↓'):''}</th>`).join('')}
+    <th style="width:72px">Actions</th>
+  </tr>`;
+
   document.getElementById('tbody').innerHTML=data.map(i=>`
-    <tr ondblclick="openEdit(${i.id})">
-      ${vis.map(c=>{
-        if(c.key==='etat')return `<td>${badge(i[c.key])}</td>`;
-        const v=i[c.key]||'—';
-        return `<td title="${v}"${c.key==='numInv'?' class="inv"':''}>${v}</td>`;
-      }).join('')}
-      <td class="act"><div class="act-row">
+    <tr class="${selected.has(i.id)?'selected':''}" ondblclick="openEdit(${i.id})">
+      <td class="td-check"><input type="checkbox" ${selected.has(i.id)?'checked':''} onchange="toggleOne(${i.id},this.checked)"/></td>
+      <td class="inv-num">${i.numInv}</td>
+      <td title="${i.categorie}">${i.categorie}</td>
+      <td title="${i.nom}">${i.nom}</td>
+      <td title="${i.modele}">${i.modele||'—'}</td>
+      <td title="${i.serie}">${i.serie||'—'}</td>
+      <td style="text-align:center">${i.nb||1}</td>
+      <td>${i.affectation||'—'}</td>
+      <td>${i.beneficiaire||'—'}</td>
+      <td>${etatBadge(i.etat)}</td>
+      <td>${statutBadge(i.statut)}</td>
+      <td class="td-act"><div class="act-row">
         <button class="act-btn" onclick="openEdit(${i.id})" title="Modifier">✏️</button>
         <button class="act-btn del" onclick="delItem(${i.id})" title="Supprimer">🗑️</button>
       </div></td>
     </tr>`).join('');
   document.getElementById('empty').style.display=data.length?'none':'block';
+  updateBatchBar();
   updateStats();
+  updateFilters();
+  document.getElementById('hdr-count').textContent=`${items.length} article${items.length>1?'s':''}`;
 }
+
 function updateStats(){
-  const t=items.length,ok=items.filter(i=>i.etat==="En service").length,
-        rp=items.filter(i=>i.etat==="En réparation").length,hs=items.filter(i=>i.etat==="Hors service").length,st=items.filter(i=>i.etat==="En stock").length;
+  const t=items.length;
+  const fonc=items.filter(i=>i.etat==="Fonctionnel").length;
+  const panne=items.filter(i=>i.etat==="En panne").length;
+  const hs=items.filter(i=>i.etat==="Hors service").length;
+  const nb=items.reduce((s,i)=>s+(parseInt(i.nb)||1),0);
   document.getElementById('stats').innerHTML=`
-    <div class="stat"><div class="stat-label">Total</div><div class="stat-val">${t}</div></div>
-    <div class="stat"><div class="stat-label">En service</div><div class="stat-val" style="color:#27500a">${ok}</div></div>
-    <div class="stat"><div class="stat-label">En réparation</div><div class="stat-val" style="color:#633806">${rp}</div></div>
-    <div class="stat"><div class="stat-label">Hors service</div><div class="stat-val" style="color:#791f1f">${hs}</div></div>
-    <div class="stat"><div class="stat-label">En stock</div><div class="stat-val" style="color:#0c447c">${st}</div></div>`;
+    <div class="stat"><div class="stat-label">Articles</div><div class="stat-val">${t}</div></div>
+    <div class="stat"><div class="stat-label">Quantité totale</div><div class="stat-val">${nb}</div></div>
+    <div class="stat"><div class="stat-label">Fonctionnels</div><div class="stat-val" style="color:#006644">${fonc}</div></div>
+    <div class="stat"><div class="stat-label">En panne</div><div class="stat-val" style="color:#974f0c">${panne}</div></div>
+    <div class="stat"><div class="stat-label">Hors service</div><div class="stat-val" style="color:#bf2600">${hs}</div></div>`;
 }
+
+function updateFilters(){
+  const cats=[...new Set(items.map(i=>i.categorie))].sort();
+  const etats=[...new Set(items.map(i=>i.etat))].sort();
+  const statuts=[...new Set(items.map(i=>i.statut))].sort();
+  const fCat=document.getElementById('fCat'),fEtat=document.getElementById('fEtat'),fStatut=document.getElementById('fStatut');
+  const vc=fCat.value,ve=fEtat.value,vs=fStatut.value;
+  fCat.innerHTML='<option value="">Toutes catégories</option>'+cats.map(c=>`<option ${c===vc?'selected':''}>${c}</option>`).join('');
+  fEtat.innerHTML='<option value="">Tous états</option>'+etats.map(c=>`<option ${c===ve?'selected':''}>${c}</option>`).join('');
+  fStatut.innerHTML='<option value="">Tous statuts</option>'+statuts.map(c=>`<option ${c===vs?'selected':''}>${c}</option>`).join('');
+}
+
 function sortBy(col){if(sortCol===col)sortDir*=-1;else{sortCol=col;sortDir=1;}render();}
 
-/* PANEL */
-function openPanel(){renderColList();document.getElementById('panelBg').style.display='flex';}
-function closePanel(){document.getElementById('panelBg').style.display='none';render();}
-function closePanelBg(e){if(e.target===document.getElementById('panelBg'))closePanel();}
-function renderColList(){
-  const list=document.getElementById('colList');list.innerHTML='';
-  COLS.forEach((col,idx)=>{
-    const div=document.createElement('div');div.className='col-item';div.draggable=true;div.dataset.idx=idx;
-    div.innerHTML=`<span class="col-handle" style="cursor:grab;font-size:16px">⠿</span>
-      <input type="checkbox" class="col-check" ${col.visible?'checked':''} onchange="COLS[${idx}].visible=this.checked" title="Afficher/masquer"/>
-      <input type="text" class="col-name-input" value="${col.label}" onchange="COLS[${idx}].label=this.value.trim()||COLS[${idx}].label" title="Renommer"/>
-      <span class="col-key">${col.key}</span>`;
-    div.addEventListener('dragstart',e=>{dragSrc=idx;div.classList.add('dragging');e.dataTransfer.effectAllowed='move';});
-    div.addEventListener('dragend',()=>{div.classList.remove('dragging');document.querySelectorAll('.col-item').forEach(el=>el.classList.remove('drag-over'));});
-    div.addEventListener('dragover',e=>{e.preventDefault();div.classList.add('drag-over');});
-    div.addEventListener('dragleave',()=>div.classList.remove('drag-over'));
-    div.addEventListener('drop',e=>{e.preventDefault();div.classList.remove('drag-over');if(dragSrc===null||dragSrc===idx)return;const m=COLS.splice(dragSrc,1)[0];COLS.splice(idx,0,m);renderColList();});
-    list.appendChild(div);
-  });
+/* ═══════════════════════════════════════
+   SELECTION LOT
+═══════════════════════════════════════ */
+function toggleOne(id,v){v?selected.add(id):selected.delete(id);render();}
+function toggleAll(v,ids){ids.forEach(id=>v?selected.add(id):selected.delete(id));render();}
+function clearSelection(){selected.clear();render();}
+function updateBatchBar(){
+  const bar=document.getElementById('batchBar');
+  bar.style.display=selected.size?'flex':'none';
+  document.getElementById('batchCount').textContent=`${selected.size} sélectionné(s)`;
 }
-function resetCols(){COLS=JSON.parse(JSON.stringify(DEFAULT_COLS));renderColList();}
+function deleteSelected(){
+  if(!confirm(`Supprimer les ${selected.size} équipements sélectionnés ?`))return;
+  items=items.filter(i=>!selected.has(i.id));
+  selected.clear();render();
+}
+function delItem(id){if(confirm('Supprimer cet équipement ?')){items=items.filter(x=>x.id!==id);selected.delete(id);render();}}
 
-/* MODAL */
-function updMod(){const cat=document.getElementById('f-cat').value,sel=document.getElementById('f-mod'),cur=sel.value;const opts=MODELES[cat]||["Autre"];sel.innerHTML=opts.map(m=>`<option value="${m}"${m===cur?' selected':''}>${m}</option>`).join('');}
-function clearForm(){['f-inv','f-nom','f-marque','f-serie','f-aff','f-date','f-obs'].forEach(id=>document.getElementById(id).value='');document.getElementById('f-cat').value='';document.getElementById('f-etat').value='En service';document.getElementById('f-mod').innerHTML='<option value="">-- catégorie d\'abord --</option>';document.getElementById('formErr').style.display='none';}
-function openAdd(){editId=null;clearForm();document.getElementById('formTitle').textContent='Ajouter un équipement';document.getElementById('formOv').style.display='flex';document.getElementById('f-inv').focus();}
+/* ═══════════════════════════════════════
+   MODAL FORM
+═══════════════════════════════════════ */
+function populateSelects(){
+  const cats=REF.categories;
+  document.getElementById('f-cat').innerHTML=cats.map(c=>`<option>${c}</option>`).join('');
+  updModeles();
+  document.getElementById('f-etat').innerHTML=REF.etats.map(e=>`<option>${e}</option>`).join('');
+  document.getElementById('f-statut').innerHTML=REF.statuts.map(s=>`<option>${s}</option>`).join('');
+}
+function updModeles(){
+  const cat=document.getElementById('f-cat').value;
+  const mods=REF.modeles[cat]||["Autre"];
+  document.getElementById('f-modele').innerHTML=`<option value="">—</option>`+mods.map(m=>`<option>${m}</option>`).join('');
+}
+function clearForm(){
+  ['f-inv','f-nom','f-serie','f-aff','f-ben','f-obs'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-nb').value=1;
+  document.getElementById('formErr').style.display='none';
+  populateSelects();
+}
+function openAdd(){editId=null;clearForm();document.getElementById('formTitle').textContent='Ajouter un équipement';document.getElementById('formOv').style.display='flex';}
 function openEdit(id){
   editId=id;const i=items.find(x=>x.id===id);
   document.getElementById('formTitle').textContent="Modifier l'équipement";
-  document.getElementById('f-inv').value=i.numInv;document.getElementById('f-nom').value=i.nom;
-  document.getElementById('f-cat').value=i.categorie;updMod();document.getElementById('f-mod').value=i.modele;
-  document.getElementById('f-marque').value=i.marque;document.getElementById('f-serie').value=i.serie;
-  document.getElementById('f-aff').value=i.affectation;document.getElementById('f-etat').value=i.etat;
-  document.getElementById('f-date').value=i.date||'';document.getElementById('f-obs').value=i.obs;
-  document.getElementById('formErr').style.display='none';document.getElementById('formOv').style.display='flex';
+  clearForm();
+  document.getElementById('f-inv').value=i.numInv;
+  document.getElementById('f-nom').value=i.nom;
+  document.getElementById('f-cat').value=i.categorie;updModeles();
+  document.getElementById('f-modele').value=i.modele||'';
+  document.getElementById('f-serie').value=i.serie||'';
+  document.getElementById('f-nb').value=i.nb||1;
+  document.getElementById('f-aff').value=i.affectation||'';
+  document.getElementById('f-ben').value=i.beneficiaire||'';
+  document.getElementById('f-etat').value=i.etat;
+  document.getElementById('f-statut').value=i.statut;
+  document.getElementById('f-obs').value=i.obs||'';
+  document.getElementById('formErr').style.display='none';
+  document.getElementById('formOv').style.display='flex';
 }
 function saveItem(){
-  const numInv=document.getElementById('f-inv').value.trim(),nom=document.getElementById('f-nom').value.trim(),cat=document.getElementById('f-cat').value,modele=document.getElementById('f-mod').value,errEl=document.getElementById('formErr');
-  if(!numInv||!nom||!cat||!modele){errEl.textContent='Remplir les champs obligatoires (*).';errEl.style.display='block';return;}
+  const numInv=document.getElementById('f-inv').value.trim();
+  const nom=document.getElementById('f-nom').value.trim();
+  const cat=document.getElementById('f-cat').value;
+  const errEl=document.getElementById('formErr');
+  if(!numInv||!nom||!cat){errEl.textContent='Remplir les champs obligatoires (*).';errEl.style.display='block';return;}
   if(!editId&&items.find(x=>x.numInv===numInv)){errEl.textContent="Ce N° inventaire existe déjà.";errEl.style.display='block';return;}
-  const obj={id:editId||nextId++,numInv,nom,categorie:cat,modele,marque:document.getElementById('f-marque').value.trim(),serie:document.getElementById('f-serie').value.trim(),affectation:document.getElementById('f-aff').value.trim(),etat:document.getElementById('f-etat').value,date:document.getElementById('f-date').value.trim(),obs:document.getElementById('f-obs').value.trim()};
+  const obj={
+    id:editId||nextId++,numInv,nom,categorie:cat,
+    modele:document.getElementById('f-modele').value,
+    serie:document.getElementById('f-serie').value.trim(),
+    nb:parseInt(document.getElementById('f-nb').value)||1,
+    affectation:document.getElementById('f-aff').value.trim(),
+    beneficiaire:document.getElementById('f-ben').value.trim(),
+    etat:document.getElementById('f-etat').value,
+    statut:document.getElementById('f-statut').value,
+    obs:document.getElementById('f-obs').value.trim()
+  };
   if(editId){const idx=items.findIndex(x=>x.id===editId);items[idx]=obj;}else items.push(obj);
   closeOv('formOv');render();
 }
-function delItem(id){if(confirm('Supprimer cet équipement ?')){items=items.filter(x=>x.id!==id);render();}}
-function closeOv(id){document.getElementById(id).style.display='none';}
-function closeOvBg(e,id){if(e.target===document.getElementById(id))closeOv(id);}
 
-/* EXPORT */
+/* ═══════════════════════════════════════
+   PANEL RÉFÉRENTIELS
+═══════════════════════════════════════ */
+function openPanel(){renderPanelTab(curPTab);document.getElementById('panelBg').style.display='flex';}
+function closePanel(){document.getElementById('panelBg').style.display='none';render();}
+function closePanelBg(e){if(e.target===document.getElementById('panelBg'))closePanel();}
+function switchPTab(id,el){curPTab=id;document.querySelectorAll('.ptab').forEach(t=>t.classList.remove('active'));el.classList.add('active');renderPanelTab(id);}
+
+function renderPanelTab(tab){
+  const body=document.getElementById('panelBody');
+  if(tab==='cat') renderRefList(body,'categories','Catégories',null);
+  else if(tab==='mod') renderModPanel(body);
+  else if(tab==='etat') renderRefList(body,'etats','États',null);
+  else if(tab==='statut') renderRefList(body,'statuts','Statuts',null);
+}
+
+function renderRefList(body,refKey,title,parentCat){
+  const list=parentCat?REF.modeles[parentCat]:(REF[refKey]||[]);
+  body.innerHTML=`<div class="ref-title">${title}</div>
+  <div class="ref-list" id="refListItems">
+    ${list.map((item,i)=>`
+      <div class="ref-item" data-idx="${i}">
+        <span id="ref-span-${i}">${item}</span>
+        <button class="ref-smbtn" onclick="editRefItem(${i},'${refKey}',${parentCat?`'${parentCat}'`:null})" title="Renommer">✏️</button>
+        <button class="ref-smbtn del" onclick="delRefItem(${i},'${refKey}',${parentCat?`'${parentCat}'`:null})" title="Supprimer">🗑️</button>
+      </div>`).join('')}
+  </div>
+  <div class="ref-add-row">
+    <input type="text" id="refNewVal" placeholder="Nouveau…" onkeydown="if(event.key==='Enter')addRefItem('${refKey}',${parentCat?`'${parentCat}'`:null})"/>
+    <button class="btn btn-primary" style="height:32px;padding:0 12px;font-size:12px" onclick="addRefItem('${refKey}',${parentCat?`'${parentCat}'`:null})">+ Ajouter</button>
+  </div>`;
+}
+
+function renderModPanel(body){
+  const cats=REF.categories;
+  body.innerHTML=`<div class="ref-title">Sélectionner une catégorie</div>
+  <select id="modCatSel" onchange="renderModListForCat()" style="width:100%;height:34px;margin-bottom:12px">
+    ${cats.map(c=>`<option>${c}</option>`).join('')}
+  </select>
+  <div id="modListContainer"></div>`;
+  renderModListForCat();
+}
+function renderModListForCat(){
+  const cat=document.getElementById('modCatSel').value;
+  if(!REF.modeles[cat])REF.modeles[cat]=[];
+  const list=REF.modeles[cat];
+  document.getElementById('modListContainer').innerHTML=`
+  <div class="ref-list">
+    ${list.map((item,i)=>`
+      <div class="ref-item">
+        <span id="mod-span-${i}">${item}</span>
+        <button class="ref-smbtn" onclick="editModItem(${i})" title="Renommer">✏️</button>
+        <button class="ref-smbtn del" onclick="delModItem(${i})" title="Supprimer">🗑️</button>
+      </div>`).join('')}
+  </div>
+  <div class="ref-add-row" style="margin-top:8px">
+    <input type="text" id="modNewVal" placeholder="Nouveau modèle…" onkeydown="if(event.key==='Enter')addModItem()"/>
+    <button class="btn btn-primary" style="height:32px;padding:0 12px;font-size:12px" onclick="addModItem()">+ Ajouter</button>
+  </div>`;
+}
+
+function addRefItem(refKey,parentCat){
+  const inp=document.getElementById('refNewVal');
+  const val=inp.value.trim();if(!val)return;
+  if(parentCat){if(!REF.modeles[parentCat])REF.modeles[parentCat]=[];REF.modeles[parentCat].push(val);}
+  else REF[refKey].push(val);
+  inp.value='';renderPanelTab(curPTab);
+}
+function delRefItem(idx,refKey,parentCat){
+  if(!confirm('Supprimer cet élément ?'))return;
+  if(parentCat)REF.modeles[parentCat].splice(idx,1);
+  else REF[refKey].splice(idx,1);
+  renderPanelTab(curPTab);
+}
+function editRefItem(idx,refKey,parentCat){
+  const list=parentCat?REF.modeles[parentCat]:REF[refKey];
+  const span=document.getElementById('ref-span-'+idx);
+  const old=list[idx];
+  span.innerHTML=`<input type="text" value="${old}" style="height:26px;font-size:13px;border:1px solid var(--border2);border-radius:4px;padding:0 6px;width:100%;font-family:var(--font)" onblur="saveRefItem(this,${idx},'${refKey}',${parentCat?`'${parentCat}'`:null})" onkeydown="if(event.key==='Enter')this.blur()"/>`;
+  span.querySelector('input').focus();
+}
+function saveRefItem(inp,idx,refKey,parentCat){
+  const val=inp.value.trim();if(!val)return;
+  if(parentCat)REF.modeles[parentCat][idx]=val;else REF[refKey][idx]=val;
+  renderPanelTab(curPTab);
+}
+function addModItem(){
+  const cat=document.getElementById('modCatSel').value;
+  const inp=document.getElementById('modNewVal');
+  const val=inp.value.trim();if(!val)return;
+  if(!REF.modeles[cat])REF.modeles[cat]=[];
+  REF.modeles[cat].push(val);inp.value='';renderModListForCat();
+}
+function delModItem(idx){
+  const cat=document.getElementById('modCatSel').value;
+  if(!confirm('Supprimer ce modèle ?'))return;
+  REF.modeles[cat].splice(idx,1);renderModListForCat();
+}
+function editModItem(idx){
+  const cat=document.getElementById('modCatSel').value;
+  const span=document.getElementById('mod-span-'+idx);
+  const old=REF.modeles[cat][idx];
+  span.innerHTML=`<input type="text" value="${old}" style="height:26px;font-size:13px;border:1px solid var(--border2);border-radius:4px;padding:0 6px;width:100%;font-family:var(--font)" onblur="saveModItem(this,${idx})" onkeydown="if(event.key==='Enter')this.blur()"/>`;
+  span.querySelector('input').focus();
+}
+function saveModItem(inp,idx){
+  const cat=document.getElementById('modCatSel').value;
+  const val=inp.value.trim();if(!val)return;
+  REF.modeles[cat][idx]=val;renderModListForCat();
+}
+
+/* ═══════════════════════════════════════
+   EXPORT
+═══════════════════════════════════════ */
+const HDR_KEYS=["numInv","categorie","nom","modele","serie","nb","affectation","beneficiaire","etat","statut","obs"];
+const HDR_LABELS={"numInv":"N° Inventaire","categorie":"Catégorie","nom":"Désignation","modele":"Modèle","serie":"N° Série","nb":"Nombre","affectation":"Affectation","beneficiaire":"Bénéficiaire","etat":"État","statut":"Statut","obs":"Observations"};
+
 function exportExcel(){
-  const visCols=COLS.filter(c=>c.visible);
   const wb=XLSX.utils.book_new();
-  const rows=[visCols.map(c=>c.label)].concat(items.map(i=>visCols.map(c=>i[c.key]||'')));
+  const rows=[HDR_KEYS.map(k=>HDR_LABELS[k])].concat(items.map(i=>HDR_KEYS.map(k=>i[k]??'')));
   const ws=XLSX.utils.aoa_to_sheet(rows);
-  ws['!cols']=visCols.map(()=>({wch:18}));
+  ws['!cols']=[10,18,18,16,16,8,14,14,14,14,22].map(w=>({wch:w}));
   XLSX.utils.book_append_sheet(wb,ws,'Inventaire');
-  XLSX.writeFile(wb,'Inventaire_Informatique.xlsx');
+  XLSX.writeFile(wb,'Inventaire_Materiel.xlsx');
 }
 function exportTemplate(){
-  const allKeys=["numInv","nom","categorie","modele","marque","serie","affectation","etat","date","obs"];
-  const allLabels={"numInv":"N° Inventaire","nom":"Désignation","categorie":"Catégorie","modele":"Modèle","marque":"Marque","serie":"N° Série","affectation":"Affectation","etat":"État","date":"Date achat","obs":"Observations"};
   const wb=XLSX.utils.book_new();
-  const rows=[allKeys.map(k=>allLabels[k]),["INF-2024-001","Laptop Dell Latitude","Ordinateur portable","Latitude 5520","Dell","DL-00145","Direction","En service","01/01/2024",""]];
+  const rows=[HDR_KEYS.map(k=>HDR_LABELS[k]),["211/1","Matériel Audio Visuel","Caméra","Panasonic","F398175000042",1,"Magasin","John","Fonctionnel","En service",""]];
   const ws=XLSX.utils.aoa_to_sheet(rows);
-  ws['!cols']=allKeys.map(()=>({wch:18}));
-  XLSX.utils.book_append_sheet(wb,ws,'Inventaire');
-  XLSX.writeFile(wb,'Modele_Inventaire.xlsx');
+  ws['!cols']=[10,18,18,16,16,8,14,14,14,14,22].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb,ws,'Modèle');
+  XLSX.writeFile(wb,'Modele_Import.xlsx');
 }
 
-/* IMPORT */
-function openImport(){pendingImport=[];document.getElementById('prevBox').style.display='none';document.getElementById('impBtn').style.display='none';document.getElementById('impErr').style.display='none';document.getElementById('fileInput').value='';document.getElementById('dropText').innerHTML='<b>Cliquer</b> ou glisser-déposer un fichier<br><small>.xlsx / .xls / .csv</small>';document.getElementById('impOv').style.display='flex';}
+/* ═══════════════════════════════════════
+   IMPORT
+═══════════════════════════════════════ */
+function openImport(){pendingImport=[];document.getElementById('prevBox').style.display='none';document.getElementById('impBtn').style.display='none';document.getElementById('impErr').style.display='none';document.getElementById('fileInput').value='';document.getElementById('dropText').innerHTML='<b>Cliquer</b> ou glisser-déposer<br><small>.xlsx / .xls / .csv</small>';document.getElementById('impOv').style.display='flex';}
 function dz(e,on){e.preventDefault();document.getElementById('dropZone').classList.toggle('drag-over',on);}
 function dropFile(e){e.preventDefault();dz(e,false);const f=e.dataTransfer.files[0];if(f)loadFile(f);}
 function loadFile(file){
   if(!file)return;
   const errEl=document.getElementById('impErr');errEl.style.display='none';
   const reader=new FileReader();
-  reader.onload=function(e){
+  reader.onload=function(ev){
     try{
-      const wb=XLSX.read(e.target.result,{type:'binary'});
+      const wb=XLSX.read(ev.target.result,{type:'binary'});
       const ws=wb.Sheets[wb.SheetNames[0]];
       const raw=XLSX.utils.sheet_to_json(ws,{defval:''});
       if(!raw.length){errEl.textContent='Le fichier est vide.';errEl.style.display='block';return;}
-      const MAP={"N° Inventaire":"numInv","Désignation":"nom","Catégorie":"categorie","Modèle":"modele","Marque":"marque","N° Série":"serie","Affectation":"affectation","État":"etat","Date achat":"date","Observations":"obs","numInv":"numInv","nom":"nom","categorie":"categorie","modele":"modele","marque":"marque","serie":"serie","affectation":"affectation","etat":"etat","date":"date","obs":"obs"};
+      const normalize=s=>s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim();
+      const RAW_MAP={
+        'n° inventaire':'numInv','numero inventaire':'numInv','n° inv':'numInv','num inventaire':'numInv',
+        'ref':'numInv','reference':'numInv','code':'numInv','no inventaire':'numInv',
+        'categorie':'categorie','category':'categorie',
+        'designation':'nom','libelle':'nom','description':'nom','nom':'nom',
+        'modele':'modele','marque':'modele','model':'modele',
+        'n° serie':'serie','numero serie':'serie','serial':'serie','serie':'serie',
+        'nombre':'nb','quantite':'nb','qty':'nb','qte':'nb',
+        'affectation':'affectation','service':'affectation','departement':'affectation','localisation':'affectation',
+        'beneficiaire':'beneficiaire','utilisateur':'beneficiaire','responsable':'beneficiaire',
+        'etat':'etat','condition':'etat',
+        'statut':'statut','status':'statut',
+        'observations':'obs','observation':'obs','remarques':'obs','remarque':'obs','commentaire':'obs','notes':'obs'
+      };
+      HDR_KEYS.forEach(k=>RAW_MAP[k]=k);
       pendingImport=raw.map((row,i)=>{
         const obj={id:null};
-        Object.keys(row).forEach(k=>{const key=MAP[k.trim()];if(key)obj[key]=String(row[k]||'').trim();});
+        Object.keys(row).forEach(k=>{const key=RAW_MAP[normalize(k)];if(key)obj[key]=String(row[k]??'').trim();});
         if(!obj.numInv)obj.numInv='IMP-'+(i+1).toString().padStart(3,'0');
-        if(!obj.nom)obj.nom='Équipement importé';
+        if(!obj.nom)obj.nom='Article importé';
         if(!obj.categorie)obj.categorie='Autre';
-        if(!obj.modele)obj.modele='Autre';
-        if(!["En service","En réparation","Hors service","En stock"].includes(obj.etat))obj.etat='En service';
-        ["numInv","nom","categorie","modele","marque","serie","affectation","etat","date","obs"].forEach(c=>{if(!obj[c])obj[c]='';});
+        if(!obj.etat||!REF.etats.includes(obj.etat))obj.etat=REF.etats[0];
+        if(!obj.statut||!REF.statuts.includes(obj.statut))obj.statut=REF.statuts[0];
+        obj.nb=parseInt(obj.nb)||1;
+        HDR_KEYS.forEach(k=>{if(obj[k]===undefined)obj[k]='';});
         return obj;
       });
-      const pC=["numInv","nom","categorie","modele","etat"],pL={"numInv":"N° Inventaire","nom":"Désignation","categorie":"Catégorie","modele":"Modèle","etat":"État"};
-      document.getElementById('prevTable').innerHTML=`<table><thead><tr>${pC.map(c=>`<th>${pL[c]}</th>`).join('')}</tr></thead><tbody>${pendingImport.slice(0,5).map(r=>`<tr>${pC.map(c=>`<td>${r[c]||'—'}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
-      document.getElementById('impInfo').textContent=`${pendingImport.length} ligne(s) — aperçu des 5 premières`;
+      const pC=["numInv","categorie","nom","modele","etat","statut"];
+      document.getElementById('prevTable').innerHTML=`<table><thead><tr>${pC.map(k=>`<th>${HDR_LABELS[k]}</th>`).join('')}</tr></thead><tbody>${pendingImport.slice(0,5).map(r=>`<tr>${pC.map(k=>`<td>${r[k]||'—'}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+      document.getElementById('impInfo').textContent=`${pendingImport.length} ligne(s) — aperçu 5 premières`;
       document.getElementById('prevBox').style.display='block';
       document.getElementById('impBtn').style.display='inline-flex';
-      document.getElementById('dropText').innerHTML=`<b>${file.name}</b> chargé ✔`;
+      document.getElementById('dropText').innerHTML=`<b>${file.name}</b> ✔`;
     }catch(err){errEl.textContent='Erreur : '+err.message;errEl.style.display='block';}
   };
   reader.readAsBinaryString(file);
@@ -426,10 +673,55 @@ function loadFile(file){
 function confirmImport(){
   if(!pendingImport.length)return;
   if(document.getElementById('impMode').value==='replace'){items=[];nextId=1;}
-  pendingImport.forEach(row=>{if(items.find(x=>x.numInv===row.numInv))row.numInv=row.numInv+'-'+Date.now().toString().slice(-4);row.id=nextId++;items.push(row);});
+
+  let newCats=[], newMods=[], newEtats=[], newStatuts=[];
+
+  pendingImport.forEach(row=>{
+    // Auto-enregistrement catégorie
+    if(row.categorie && !REF.categories.includes(row.categorie)){
+      REF.categories.push(row.categorie);
+      newCats.push(row.categorie);
+    }
+    // Auto-enregistrement modèle dans sa catégorie
+    if(row.modele && row.categorie){
+      if(!REF.modeles[row.categorie]) REF.modeles[row.categorie]=[];
+      if(!REF.modeles[row.categorie].includes(row.modele)){
+        REF.modeles[row.categorie].push(row.modele);
+        newMods.push(row.modele);
+      }
+    }
+    // Auto-enregistrement état
+    if(row.etat && !REF.etats.includes(row.etat)){
+      REF.etats.push(row.etat);
+      newEtats.push(row.etat);
+    }
+    // Auto-enregistrement statut
+    if(row.statut && !REF.statuts.includes(row.statut)){
+      REF.statuts.push(row.statut);
+      newStatuts.push(row.statut);
+    }
+    if(items.find(x=>x.numInv===row.numInv))row.numInv=row.numInv+'-'+Date.now().toString().slice(-4);
+    row.id=nextId++;items.push(row);
+  });
+
   closeOv('impOv');render();
+
+  // Résumé des nouveautés ajoutées aux référentiels
+  const news=[];
+  if(newCats.length)   news.push(`${newCats.length} catégorie(s) : ${newCats.join(', ')}`);
+  if(newMods.length)   news.push(`${newMods.length} modèle(s) ajouté(s) aux référentiels`);
+  if(newEtats.length)  news.push(`${newEtats.length} état(s) : ${newEtats.join(', ')}`);
+  if(newStatuts.length)news.push(`${newStatuts.length} statut(s) : ${newStatuts.join(', ')}`);
+  if(news.length) setTimeout(()=>alert('✅ Import réussi !\n\nNouveaux référentiels ajoutés automatiquement :\n• '+news.join('\n• ')),100);
 }
+
+/* ═══════════════════════════════════════
+   UTILS
+═══════════════════════════════════════ */
+function closeOv(id){document.getElementById(id).style.display='none';}
+function closeOvBg(e,id){if(e.target===document.getElementById(id))closeOv(id);}
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeOv('formOv');closeOv('impOv');if(document.getElementById('panelBg').style.display!=='none')closePanel();}});
+
 render();
 </script>
 </body>
