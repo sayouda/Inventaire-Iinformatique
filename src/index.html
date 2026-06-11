@@ -140,9 +140,41 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:var(--ac
 .prev-tbl th{font-size:10px;padding:6px 8px;background:var(--surface2)}
 .prev-tbl td{font-size:11px;padding:5px 8px;max-width:110px}
 footer{text-align:center;padding:14px;font-size:11px;color:var(--muted)}
+.btn-print{color:#5e4c00;border-color:#e6c84a;background:#fffae6}
+.btn-print:hover{background:#fff3c4}
+/* MODAL ETATS */
+.modal-etats{width:700px;max-width:98vw}
+.etat-filters{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.etat-comment{width:100%;min-height:70px;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-family:var(--font);font-size:13px;resize:vertical}
+.etat-comment:focus{border-color:var(--accent);outline:none}
+.preview-zone{border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2);max-height:320px;overflow-y:auto;padding:0}
+/* PRINT LAYOUT */
+@media print{
+  body *{visibility:hidden}
+  #printZone,#printZone *{visibility:visible}
+  #printZone{position:fixed;inset:0;background:#fff;padding:20px;z-index:9999}
+}
+.print-doc{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;color:#111;background:#fff;padding:24px}
+.print-header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1a1a18;padding-bottom:12px;margin-bottom:16px}
+.print-header h2{font-size:18px;font-weight:700;margin:0 0 4px}
+.print-header .meta{font-size:11px;color:#555;line-height:1.6}
+.print-header .date{font-size:12px;color:#555;text-align:right}
+.print-comment{background:#fffae6;border-left:4px solid #e6c84a;padding:8px 12px;margin-bottom:14px;font-size:12px;line-height:1.6;border-radius:0 4px 4px 0}
+.print-section{margin-bottom:18px}
+.print-section-title{font-size:13px;font-weight:700;background:#1a1a18;color:#fff;padding:6px 12px;margin-bottom:0;border-radius:4px 4px 0 0}
+.print-table{width:100%;border-collapse:collapse;font-size:12px}
+.print-table th{background:#f0f2f5;padding:6px 10px;text-align:left;border:1px solid #dde1e7;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#626f86}
+.print-table td{padding:6px 10px;border:1px solid #dde1e7;vertical-align:top}
+.print-table tr:nth-child(even) td{background:#f8f9fa}
+.print-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+.print-kpi{border:1px solid #dde1e7;border-radius:6px;padding:8px 12px;text-align:center}
+.print-kpi-label{font-size:10px;color:#626f86;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px}
+.print-kpi-val{font-size:20px;font-weight:700}
+.print-footer{margin-top:16px;padding-top:8px;border-top:1px solid #dde1e7;font-size:10px;color:#888;display:flex;justify-content:space-between}
 </style>
 </head>
 <body>
+<div id="printZone" style="display:none"></div>
 <header>
   <span style="font-size:20px">🖥️</span>
   <h1>Inventaire Matériel</h1>
@@ -163,6 +195,8 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--muted)}
     <button class="btn btn-info" onclick="openImport()">📥 Importer Excel</button>
     <button class="btn btn-success" onclick="exportExcel()">📤 Exporter Excel</button>
     <button class="btn" onclick="exportTemplate()">📋 Modèle</button>
+    <div class="sep"></div>
+    <button class="btn btn-print" onclick="openEtats()">🖨️ États & Rapports</button>
   </div>
 
   <div id="batchBar" class="batch-bar" style="display:none">
@@ -724,5 +758,210 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeOv('formOv');c
 
 render();
 </script>
+
+<!-- MODAL ETATS -->
+<div class="overlay" id="etatsOv" style="display:none" onclick="closeOvBg(event,'etatsOv')">
+  <div class="modal modal-etats" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <h2>🖨️ États & Rapports</h2>
+      <button class="close-btn" onclick="closeOv('etatsOv')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="etat-filters">
+        <div class="field"><label>Type de regroupement</label>
+          <select id="etatType" onchange="previewEtat()">
+            <option value="categorie">Par catégorie</option>
+            <option value="modele">Par marque / modèle</option>
+            <option value="affectation">Par département</option>
+            <option value="statut">Par statut</option>
+            <option value="etat">Par état</option>
+            <option value="all">Liste complète</option>
+          </select>
+        </div>
+        <div class="field"><label>Filtrer par catégorie</label>
+          <select id="etatFCat" onchange="previewEtat()"><option value="">Toutes</option></select>
+        </div>
+        <div class="field"><label>Filtrer par état</label>
+          <select id="etatFEtat" onchange="previewEtat()"><option value="">Tous</option></select>
+        </div>
+        <div class="field"><label>Filtrer par statut</label>
+          <select id="etatFStatut" onchange="previewEtat()"><option value="">Tous</option></select>
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:10px">
+        <label>Commentaires / Explications (optionnel)</label>
+        <textarea class="etat-comment" id="etatComment" placeholder="Ex: Rapport du 11/06/2026 — 5 PC Acer en attente de renouvellement..." oninput="previewEtat()"></textarea>
+      </div>
+      <div class="field"><label>Aperçu</label>
+        <div class="preview-zone" id="etatPreview"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeOv('etatsOv')">Fermer</button>
+      <button class="btn btn-success" onclick="exportEtatExcel()">📤 Exporter Excel</button>
+      <button class="btn btn-print" onclick="printEtat()">🖨️ Imprimer</button>
+      <button class="btn btn-primary" onclick="exportEtatPDF()">📄 Exporter PDF</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════
+   ÉTATS & RAPPORTS
+═══════════════════════════════════════ */
+function openEtats(){
+  // Peupler les filtres
+  const cats=[...new Set(items.map(i=>i.categorie))].sort();
+  const etats=[...new Set(items.map(i=>i.etat))].sort();
+  const statuts=[...new Set(items.map(i=>i.statut))].sort();
+  document.getElementById('etatFCat').innerHTML='<option value="">Toutes</option>'+cats.map(c=>`<option>${c}</option>`).join('');
+  document.getElementById('etatFEtat').innerHTML='<option value="">Tous</option>'+etats.map(e=>`<option>${e}</option>`).join('');
+  document.getElementById('etatFStatut').innerHTML='<option value="">Tous</option>'+statuts.map(s=>`<option>${s}</option>`).join('');
+  previewEtat();
+  document.getElementById('etatsOv').style.display='flex';
+}
+
+function getFilteredItems(){
+  const fc=document.getElementById('etatFCat').value;
+  const fe=document.getElementById('etatFEtat').value;
+  const fs=document.getElementById('etatFStatut').value;
+  return items.filter(i=>(!fc||i.categorie===fc)&&(!fe||i.etat===fe)&&(!fs||i.statut===fs));
+}
+
+function buildPrintDoc(forPDF=false){
+  const type=document.getElementById('etatType').value;
+  const comment=document.getElementById('etatComment').value.trim();
+  const data=getFilteredItems();
+  const now=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'});
+  const typeLabels={categorie:'Par catégorie',modele:'Par marque / modèle',affectation:'Par département',statut:'Par statut',etat:'Par état',all:'Liste complète'};
+
+  const fonc=data.filter(i=>i.etat==='Fonctionnel').length;
+  const panne=data.filter(i=>i.etat==='En panne'||i.etat==='Hors service').length;
+  const nb=data.reduce((s,i)=>s+(parseInt(i.nb)||1),0);
+
+  let body='';
+
+  if(type==='all'){
+    body+=`<div class="print-section">
+      <div class="print-section-title">Liste complète — ${data.length} article(s)</div>
+      <table class="print-table">
+        <thead><tr><th>N° Inv.</th><th>Catégorie</th><th>Désignation</th><th>Modèle</th><th>N° Série</th><th>Qté</th><th>Affectation</th><th>Bénéficiaire</th><th>État</th><th>Statut</th></tr></thead>
+        <tbody>${data.map(i=>`<tr><td>${i.numInv}</td><td>${i.categorie}</td><td>${i.nom}</td><td>${i.modele||'—'}</td><td>${i.serie||'—'}</td><td style="text-align:center">${i.nb||1}</td><td>${i.affectation||'—'}</td><td>${i.beneficiaire||'—'}</td><td>${i.etat}</td><td>${i.statut}</td></tr>`).join('')}</tbody>
+      </table></div>`;
+  } else {
+    const grouped={};
+    data.forEach(i=>{const k=i[type]||'Non défini';if(!grouped[k])grouped[k]=[];grouped[k].push(i);});
+    Object.entries(grouped).sort((a,b)=>a[0].localeCompare(b[0],'fr')).forEach(([grp,rows])=>{
+      body+=`<div class="print-section">
+        <div class="print-section-title">${grp} — ${rows.length} article(s)</div>
+        <table class="print-table">
+          <thead><tr><th>N° Inv.</th><th>Catégorie</th><th>Désignation</th><th>Modèle</th><th>N° Série</th><th>Qté</th><th>Affectation</th><th>Bénéficiaire</th><th>État</th><th>Statut</th></tr></thead>
+          <tbody>${rows.map(i=>`<tr><td>${i.numInv}</td><td>${i.categorie}</td><td>${i.nom}</td><td>${i.modele||'—'}</td><td>${i.serie||'—'}</td><td style="text-align:center">${i.nb||1}</td><td>${i.affectation||'—'}</td><td>${i.beneficiaire||'—'}</td><td>${i.etat}</td><td>${i.statut}</td></tr>`).join('')}</tbody>
+        </table></div>`;
+    });
+  }
+
+  return `<div class="print-doc">
+    <div class="print-header">
+      <div>
+        <h2>État du parc matériel — ${typeLabels[type]}</h2>
+        <div class="meta">Total : ${data.length} article(s) &nbsp;·&nbsp; Quantité : ${nb} &nbsp;·&nbsp; Fonctionnels : ${fonc} &nbsp;·&nbsp; En panne/HS : ${panne}</div>
+      </div>
+      <div class="date">Édité le ${now}</div>
+    </div>
+    <div class="print-summary">
+      <div class="print-kpi"><div class="print-kpi-label">Articles</div><div class="print-kpi-val">${data.length}</div></div>
+      <div class="print-kpi"><div class="print-kpi-label">Quantité</div><div class="print-kpi-val">${nb}</div></div>
+      <div class="print-kpi"><div class="print-kpi-label">Fonctionnels</div><div class="print-kpi-val" style="color:#006644">${fonc}</div></div>
+      <div class="print-kpi"><div class="print-kpi-label">En panne/HS</div><div class="print-kpi-val" style="color:#bf2600">${panne}</div></div>
+    </div>
+    ${comment?`<div class="print-comment"><strong>Observations :</strong> ${comment}</div>`:''}
+    ${body}
+    <div class="print-footer"><span>Inventaire Matériel v2.0</span><span>${now}</span></div>
+  </div>`;
+}
+
+function previewEtat(){
+  document.getElementById('etatPreview').innerHTML=buildPrintDoc();
+}
+
+function printEtat(){
+  document.getElementById('printZone').innerHTML=buildPrintDoc();
+  document.getElementById('printZone').style.display='block';
+  window.print();
+  document.getElementById('printZone').style.display='none';
+  document.getElementById('printZone').innerHTML='';
+}
+
+function exportEtatPDF(){
+  const doc=buildPrintDoc(true);
+  const win=window.open('','_blank','width=900,height=700');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>État Inventaire</title>
+  <style>
+    body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;color:#111;margin:0;padding:0}
+    .print-doc{padding:24px}
+    .print-header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1a1a18;padding-bottom:12px;margin-bottom:16px}
+    .print-header h2{font-size:18px;font-weight:700;margin:0 0 4px}
+    .print-header .meta{font-size:11px;color:#555;line-height:1.6}
+    .print-header .date{font-size:12px;color:#555;text-align:right}
+    .print-comment{background:#fffae6;border-left:4px solid #e6c84a;padding:8px 12px;margin-bottom:14px;font-size:12px;line-height:1.6}
+    .print-section{margin-bottom:18px}
+    .print-section-title{font-size:13px;font-weight:700;background:#1a1a18;color:#fff;padding:6px 12px;margin-bottom:0}
+    .print-table{width:100%;border-collapse:collapse;font-size:11px}
+    .print-table th{background:#f0f2f5;padding:5px 8px;text-align:left;border:1px solid #dde1e7;font-size:10px;font-weight:700;text-transform:uppercase;color:#626f86}
+    .print-table td{padding:5px 8px;border:1px solid #dde1e7}
+    .print-table tr:nth-child(even) td{background:#f8f9fa}
+    .print-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+    .print-kpi{border:1px solid #dde1e7;border-radius:6px;padding:8px 12px;text-align:center}
+    .print-kpi-label{font-size:10px;color:#626f86;text-transform:uppercase;margin-bottom:2px}
+    .print-kpi-val{font-size:20px;font-weight:700}
+    .print-footer{margin-top:16px;padding-top:8px;border-top:1px solid #dde1e7;font-size:10px;color:#888;display:flex;justify-content:space-between}
+    @media print{body{margin:0}@page{margin:15mm}}
+  </style></head><body>${doc}
+  <script>window.onload=function(){window.print();}<\/script>
+  </body></html>`);
+  win.document.close();
+}
+
+function exportEtatExcel(){
+  const type=document.getElementById('etatType').value;
+  const comment=document.getElementById('etatComment').value.trim();
+  const data=getFilteredItems();
+  const typeLabels={categorie:'Par catégorie',modele:'Par marque/modèle',affectation:'Par département',statut:'Par statut',etat:'Par état',all:'Liste complète'};
+  const wb=XLSX.utils.book_new();
+  const HDR=['N° Inventaire','Catégorie','Désignation','Modèle','N° Série','Nombre','Affectation','Bénéficiaire','État','Statut'];
+  const KEYS=['numInv','categorie','nom','modele','serie','nb','affectation','beneficiaire','etat','statut'];
+
+  if(type==='all'){
+    const rows=[HDR].concat(data.map(i=>KEYS.map(k=>i[k]||'')));
+    if(comment)rows.unshift(['Observations : '+comment]);
+    const ws=XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols']=KEYS.map(()=>({wch:16}));
+    XLSX.utils.book_append_sheet(wb,ws,'Liste complète');
+  } else {
+    const grouped={};
+    data.forEach(i=>{const k=i[type]||'Non défini';if(!grouped[k])grouped[k]=[];grouped[k].push(i);});
+    Object.entries(grouped).sort((a,b)=>a[0].localeCompare(b[0],'fr')).forEach(([grp,rows])=>{
+      const aoa=[HDR].concat(rows.map(i=>KEYS.map(k=>i[k]||'')));
+      const sheetName=grp.substring(0,28).replace(/[\/*?:[\]]/g,'');
+      const ws=XLSX.utils.aoa_to_sheet(aoa);
+      ws['!cols']=KEYS.map(()=>({wch:16}));
+      XLSX.utils.book_append_sheet(wb,ws,sheetName||'Groupe');
+    });
+    // Onglet résumé
+    const sumHDR=[typeLabels[type],'Total articles','Fonctionnels','En panne/HS'];
+    const sumRows=Object.entries(grouped).map(([k,v])=>[k,v.length,
+      v.filter(i=>i.etat==='Fonctionnel').length,
+      v.filter(i=>i.etat==='En panne'||i.etat==='Hors service').length
+    ]);
+    const sumWs=XLSX.utils.aoa_to_sheet([sumHDR,...sumRows]);
+    sumWs['!cols']=[{wch:22},{wch:14},{wch:14},{wch:14}];
+    XLSX.utils.book_append_sheet(wb,sumWs,'Résumé');
+  }
+  const fname='Etat_'+type+'_'+new Date().toISOString().slice(0,10)+'.xlsx';
+  XLSX.writeFile(wb,fname);
+}
+</script>
+
 </body>
 </html>
