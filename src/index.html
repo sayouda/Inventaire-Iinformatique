@@ -183,7 +183,7 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--muted)}
 <div id="printZone" style="display:none"></div>
 <header>
   <span style="font-size:20px">🖥️</span>
-  <h1>Inventaire Matériel ISG TUNIS Edité par TSelmi</h1>
+  <h1>Inventaire Matériel</h1>
   <span class="pill" id="hdr-count">0 articles</span>
 </header>
 
@@ -195,6 +195,8 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--muted)}
     <select id="fCat" onchange="render()"><option value="">Toutes catégories</option></select>
     <select id="fEtat" onchange="render()"><option value="">Tous états</option></select>
     <select id="fStatut" onchange="render()"><option value="">Tous statuts</option></select>
+    <select id="fModele" onchange="render()"><option value="">Tous modèles</option></select>
+    <select id="fAnnee" onchange="render()"><option value="">Toutes années</option></select>
     <div class="sep"></div>
     <button class="btn btn-primary" onclick="openAdd()">➕ Ajouter</button>
     <button class="btn btn-settings" onclick="openPanel()">⚙ Référentiels</button>
@@ -260,6 +262,7 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--muted)}
         <div class="field"><label>État *</label><select id="f-etat"></select></div>
         <div class="field"><label>Statut *</label><select id="f-statut"></select></div>
       </div>
+      <div class="field"><label>Année</label><input type="number" id="f-annee" placeholder="ex: 2024" min="1990" max="2099" style="height:34px;width:100%;padding:0 10px;border:1px solid var(--border2);border-radius:var(--radius);font-family:var(--font)"/></div>
       <div class="field"><label>Observations</label><textarea id="f-obs" placeholder="Optionnel…"></textarea></div>
     </div>
     <div class="modal-foot">
@@ -368,9 +371,11 @@ function render(){
   const fc=document.getElementById('fCat').value;
   const fe=document.getElementById('fEtat').value;
   const fs=document.getElementById('fStatut').value;
+  const fm=document.getElementById('fModele').value;
+  const fa=document.getElementById('fAnnee').value;
   let data=items.filter(i=>{
-    const txt=[i.numInv,i.categorie,i.nom,i.modele,i.serie,i.affectation,i.beneficiaire,i.etat,i.statut,i.obs].join(' ').toLowerCase();
-    return(!q||txt.includes(q))&&(!fc||i.categorie===fc)&&(!fe||i.etat===fe)&&(!fs||i.statut===fs);
+    const txt=[i.numInv,i.categorie,i.nom,i.modele,i.serie,i.affectation,i.beneficiaire,i.etat,i.statut,i.annee||'',i.obs].join(' ').toLowerCase();
+    return(!q||txt.includes(q))&&(!fc||i.categorie===fc)&&(!fe||i.etat===fe)&&(!fs||i.statut===fs)&&(!fm||i.modele===fm)&&(!fa||String(i.annee||'')=== fa);
   });
   data.sort((a,b)=>String(a[sortCol]||'').localeCompare(String(b[sortCol]||''),'fr')*sortDir);
 
@@ -437,11 +442,16 @@ function updateFilters(){
   const cats=[...new Set(items.map(i=>i.categorie))].sort();
   const etats=[...new Set(items.map(i=>i.etat))].sort();
   const statuts=[...new Set(items.map(i=>i.statut))].sort();
+  const modeles=[...new Set(items.map(i=>i.modele).filter(Boolean))].sort();
+  const annees=[...new Set(items.map(i=>String(i.annee||'')).filter(Boolean))].sort().reverse();
   const fCat=document.getElementById('fCat'),fEtat=document.getElementById('fEtat'),fStatut=document.getElementById('fStatut');
-  const vc=fCat.value,ve=fEtat.value,vs=fStatut.value;
+  const fModele=document.getElementById('fModele'),fAnnee=document.getElementById('fAnnee');
+  const vc=fCat.value,ve=fEtat.value,vs=fStatut.value,vm=fModele.value,va=fAnnee.value;
   fCat.innerHTML='<option value="">Toutes catégories</option>'+cats.map(c=>`<option ${c===vc?'selected':''}>${c}</option>`).join('');
   fEtat.innerHTML='<option value="">Tous états</option>'+etats.map(c=>`<option ${c===ve?'selected':''}>${c}</option>`).join('');
   fStatut.innerHTML='<option value="">Tous statuts</option>'+statuts.map(c=>`<option ${c===vs?'selected':''}>${c}</option>`).join('');
+  fModele.innerHTML='<option value="">Tous modèles</option>'+modeles.map(c=>`<option ${c===vm?'selected':''}>${c}</option>`).join('');
+  fAnnee.innerHTML='<option value="">Toutes années</option>'+annees.map(c=>`<option ${c===va?'selected':''}>${c}</option>`).join('');
 }
 
 function sortBy(col){if(sortCol===col)sortDir*=-1;else{sortCol=col;sortDir=1;}render();}
@@ -480,7 +490,7 @@ function updModeles(){
   document.getElementById('f-modele').innerHTML=`<option value="">—</option>`+mods.map(m=>`<option>${m}</option>`).join('');
 }
 function clearForm(){
-  ['f-inv','f-nom','f-serie','f-aff','f-ben','f-obs'].forEach(id=>document.getElementById(id).value='');
+  ['f-inv','f-nom','f-serie','f-aff','f-ben','f-annee','f-obs'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('f-nb').value=1;
   document.getElementById('formErr').style.display='none';
   populateSelects();
@@ -500,6 +510,7 @@ function openEdit(id){
   document.getElementById('f-ben').value=i.beneficiaire||'';
   document.getElementById('f-etat').value=i.etat;
   document.getElementById('f-statut').value=i.statut;
+  document.getElementById('f-annee').value=i.annee||'';
   document.getElementById('f-obs').value=i.obs||'';
   document.getElementById('formErr').style.display='none';
   document.getElementById('formOv').style.display='flex';
@@ -520,6 +531,7 @@ function saveItem(){
     beneficiaire:document.getElementById('f-ben').value.trim(),
     etat:document.getElementById('f-etat').value,
     statut:document.getElementById('f-statut').value,
+    annee:document.getElementById('f-annee').value.trim(),
     obs:document.getElementById('f-obs').value.trim()
   };
   if(editId){const idx=items.findIndex(x=>x.id===editId);items[idx]=obj;}else items.push(obj);
@@ -640,8 +652,8 @@ function saveModItem(inp,idx){
 /* ═══════════════════════════════════════
    EXPORT
 ═══════════════════════════════════════ */
-const HDR_KEYS=["numInv","categorie","nom","modele","serie","nb","affectation","beneficiaire","etat","statut","obs"];
-const HDR_LABELS={"numInv":"N° Inventaire","categorie":"Catégorie","nom":"Désignation","modele":"Modèle","serie":"N° Série","nb":"Nombre","affectation":"Affectation","beneficiaire":"Bénéficiaire","etat":"État","statut":"Statut","obs":"Observations"};
+const HDR_KEYS=["numInv","categorie","nom","modele","serie","nb","affectation","beneficiaire","etat","statut","annee","obs"];
+const HDR_LABELS={"numInv":"N° Inventaire","categorie":"Catégorie","nom":"Désignation","modele":"Modèle","serie":"N° Série","nb":"Nombre","affectation":"Affectation","beneficiaire":"Bénéficiaire","etat":"État","statut":"Statut","annee":"Année","obs":"Observations"};
 
 function exportExcel(){
   const wb=XLSX.utils.book_new();
@@ -689,7 +701,8 @@ function loadFile(file){
         'beneficiaire':'beneficiaire','utilisateur':'beneficiaire','responsable':'beneficiaire',
         'etat':'etat','condition':'etat',
         'statut':'statut','status':'statut',
-        'observations':'obs','observation':'obs','remarques':'obs','remarque':'obs','commentaire':'obs','notes':'obs'
+        'observations':'obs','observation':'obs','remarques':'obs','remarque':'obs','commentaire':'obs','notes':'obs',
+        'annee':'annee','année':'annee','year':'annee','an':'annee'
       };
       HDR_KEYS.forEach(k=>RAW_MAP[k]=k);
       pendingImport=raw.map((row,i)=>{
@@ -744,7 +757,9 @@ function confirmImport(){
       REF.statuts.push(row.statut);
       newStatuts.push(row.statut);
     }
-    if(items.find(x=>x.numInv===row.numInv))row.numInv=row.numInv+'-'+Date.now().toString().slice(-4);
+    // Anti-doublon uniquement si le numéro existe déjà exactement
+    const normInv=v=>String(v||'').trim().toLowerCase();
+    if(items.find(x=>normInv(x.numInv)===normInv(row.numInv)&&x.serie===row.serie&&x.nom===row.nom))row.numInv=row.numInv+'-DUP';
     row.id=nextId++;items.push(row);
   });
 
@@ -940,7 +955,7 @@ function exportEtatExcel(){
   const typeLabels={categorie:'Par catégorie',modele:'Par marque/modèle',affectation:'Par département',statut:'Par statut',etat:'Par état',all:'Liste complète'};
   const wb=XLSX.utils.book_new();
   const HDR=['N° Inventaire','Catégorie','Désignation','Modèle','N° Série','Nombre','Affectation','Bénéficiaire','État','Statut'];
-  const KEYS=['numInv','categorie','nom','modele','serie','nb','affectation','beneficiaire','etat','statut'];
+  const KEYS=['numInv','categorie','nom','modele','serie','nb','affectation','beneficiaire','etat','statut','annee'];
 
   if(type==='all'){
     const rows=[HDR].concat(data.map(i=>KEYS.map(k=>i[k]||'')));
