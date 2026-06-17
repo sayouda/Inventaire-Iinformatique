@@ -521,7 +521,7 @@ function saveItem(){
   const cat=document.getElementById('f-cat').value;
   const errEl=document.getElementById('formErr');
   if(!numInv||!nom||!cat){errEl.textContent='Remplir les champs obligatoires (*).';errEl.style.display='block';return;}
-  if(!editId&&items.find(x=>x.numInv===numInv)){errEl.textContent="Ce N° inventaire existe déjà.";errEl.style.display='block';return;}
+  // Pas de blocage sur doublon de N° inventaire
   const obj={
     id:editId||nextId++,numInv,nom,categorie:cat,
     modele:document.getElementById('f-modele').value,
@@ -757,9 +757,7 @@ function confirmImport(){
       REF.statuts.push(row.statut);
       newStatuts.push(row.statut);
     }
-    // Anti-doublon uniquement si le numéro existe déjà exactement
-    const normInv=v=>String(v||'').trim().toLowerCase();
-    if(items.find(x=>normInv(x.numInv)===normInv(row.numInv)&&x.serie===row.serie&&x.nom===row.nom))row.numInv=row.numInv+'-DUP';
+    // Pas de vérification de doublon sur N° inventaire — un même numéro peut apparaître plusieurs fois
     row.id=nextId++;items.push(row);
   });
 
