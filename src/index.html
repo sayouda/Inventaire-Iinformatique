@@ -151,6 +151,7 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--muted)}
 /* MODAL ETATS */
 .modal-etats{width:700px;max-width:98vw}
 .etat-filters{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.etat-filters .field:nth-child(n+5){grid-column:span 1}
 .etat-comment{width:100%;min-height:70px;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-family:var(--font);font-size:13px;resize:vertical}
 .etat-comment:focus{border-color:var(--accent);outline:none}
 .preview-zone{border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2);max-height:320px;overflow-y:auto;padding:0}
@@ -192,6 +193,7 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--muted)}
 
   <div class="toolbar">
     <input type="text" id="search" placeholder="🔍 Rechercher…" oninput="render()"/>
+    <select id="fCatGlobale" onchange="render()"><option value="">Toutes cat. globales</option></select>
     <select id="fCat" onchange="render()"><option value="">Toutes catégories</option></select>
     <select id="fEtat" onchange="render()"><option value="">Tous états</option></select>
     <select id="fStatut" onchange="render()"><option value="">Tous statuts</option></select>
@@ -280,7 +282,8 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--muted)}
       <button class="btn" style="height:28px;padding:0 8px" onclick="closePanel()">✕ Fermer</button>
     </div>
     <div class="panel-tabs">
-      <button class="ptab active" onclick="switchPTab('cat',this)">Catégories</button>
+      <button class="ptab active" onclick="switchPTab('catg',this)">Cat. globales</button>
+      <button class="ptab" onclick="switchPTab('cat',this)">Catégories</button>
       <button class="ptab" onclick="switchPTab('mod',this)">Modèles</button>
       <button class="ptab" onclick="switchPTab('etat',this)">États</button>
       <button class="ptab" onclick="switchPTab('statut',this)">Statuts</button>
@@ -331,7 +334,11 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--muted)}
    RÉFÉRENTIELS (éditables)
 ═══════════════════════════════════════ */
 let REF = {
-  categories: ["Matériel Audio Visuel","Ordinateur portable","Ordinateur fixe","Écran","Imprimante","Réseau","Accessoire","Serveur","Téléphonie","Autre"],
+  catGlobales: {
+    "Matériel informatique et électronique": ["Matériel informatique","Matériel électronique","Matériel de climatisation","Matériel audio visuel","Matériel Audio Visuel","Ordinateur portable","Ordinateur fixe","Écran","Imprimante","Réseau","Serveur","Téléphonie"],
+    "Meuble et accessoires": ["Meuble","Accessoires","Accessoire","Divers","Autre"]
+  },
+  categories: ["Matériel Audio Visuel","Matériel informatique","Matériel électronique","Matériel de climatisation","Ordinateur portable","Ordinateur fixe","Écran","Imprimante","Réseau","Accessoire","Serveur","Téléphonie","Meuble","Accessoires","Divers","Autre"],
   modeles: {
     "Matériel Audio Visuel": ["Panasonic","Sony","Canon","JVC","Autre"],
     "Ordinateur portable": ["ThinkPad E15","Latitude 5520","EliteBook 840","VivoBook 15","MacBook Pro","Autre"],
@@ -355,7 +362,7 @@ let items = [
   {id:1,numInv:"211/1",categorie:"Matériel Audio Visuel",nom:"Caméra",modele:"Panasonic",serie:"F398175000042",nb:1,affectation:"Magasin",beneficiaire:"John",etat:"Fonctionnel",statut:"Hors service",obs:""}
 ];
 let nextId=2, sortCol='numInv', sortDir=1, editId=null, pendingImport=[], selected=new Set();
-let curPTab='cat';
+let curPTab='catg';
 
 /* ═══════════════════════════════════════
    RENDER TABLE
@@ -368,20 +375,23 @@ function statutBadge(s){return `<span class="badge ${STAT_CLS[s]||'s-hors'}">${s
 
 function render(){
   const q=document.getElementById('search').value.toLowerCase();
+  const fcg=document.getElementById('fCatGlobale').value;
   const fc=document.getElementById('fCat').value;
   const fe=document.getElementById('fEtat').value;
   const fs=document.getElementById('fStatut').value;
   const fm=document.getElementById('fModele').value;
   const fa=document.getElementById('fAnnee').value;
   let data=items.filter(i=>{
-    const txt=[i.numInv,i.categorie,i.nom,i.modele,i.serie,i.affectation,i.beneficiaire,i.etat,i.statut,i.annee||'',i.obs].join(' ').toLowerCase();
-    return(!q||txt.includes(q))&&(!fc||i.categorie===fc)&&(!fe||i.etat===fe)&&(!fs||i.statut===fs)&&(!fm||i.modele===fm)&&(!fa||String(i.annee||'')=== fa);
+    const cg=getCatGlobale(i.categorie);
+    const txt=[i.numInv,cg,i.categorie,i.nom,i.modele,i.serie,i.affectation,i.beneficiaire,i.etat,i.statut,i.annee||'',i.obs].join(' ').toLowerCase();
+    return(!q||txt.includes(q))&&(!fcg||cg===fcg)&&(!fc||i.categorie===fc)&&(!fe||i.etat===fe)&&(!fs||i.statut===fs)&&(!fm||i.modele===fm)&&(!fa||String(i.annee||'')=== fa);
   });
   data.sort((a,b)=>String(a[sortCol]||'').localeCompare(String(b[sortCol]||''),'fr')*sortDir);
 
   // thead
   const cols=[
     {k:'numInv',l:'N° Inventaire',w:'100px'},
+    {k:'catGlobale',l:'Catégorie globale',w:'160px'},
     {k:'categorie',l:'Catégorie',w:'130px'},
     {k:'nom',l:'Désignation',w:'130px'},
     {k:'modele',l:'Modèle',w:'110px'},
@@ -399,6 +409,8 @@ function render(){
     <th style="width:72px">Actions</th>
   </tr>`;
 
+  // Calcul catGlobale à la volée
+  data.forEach(i=>{ i.catGlobale=getCatGlobale(i.categorie); });
   document.getElementById('tbody').innerHTML=data.map(i=>`
     <tr class="${selected.has(i.id)?'selected':''}" ondblclick="openEdit(${i.id})">
       <td class="td-check"><input type="checkbox" ${selected.has(i.id)?'checked':''} onchange="toggleOne(${i.id},this.checked)"/></td>
@@ -439,14 +451,17 @@ function updateStats(){
 }
 
 function updateFilters(){
+  const catGlobales=Object.keys(REF.catGlobales).sort();
   const cats=[...new Set(items.map(i=>i.categorie))].sort();
   const etats=[...new Set(items.map(i=>i.etat))].sort();
   const statuts=[...new Set(items.map(i=>i.statut))].sort();
   const modeles=[...new Set(items.map(i=>i.modele).filter(Boolean))].sort();
   const annees=[...new Set(items.map(i=>String(i.annee||'')).filter(Boolean))].sort().reverse();
-  const fCat=document.getElementById('fCat'),fEtat=document.getElementById('fEtat'),fStatut=document.getElementById('fStatut');
+  const fCatG=document.getElementById('fCatGlobale'),fCat=document.getElementById('fCat');
+  const fEtat=document.getElementById('fEtat'),fStatut=document.getElementById('fStatut');
   const fModele=document.getElementById('fModele'),fAnnee=document.getElementById('fAnnee');
-  const vc=fCat.value,ve=fEtat.value,vs=fStatut.value,vm=fModele.value,va=fAnnee.value;
+  const vcg=fCatG.value,vc=fCat.value,ve=fEtat.value,vs=fStatut.value,vm=fModele.value,va=fAnnee.value;
+  fCatG.innerHTML='<option value="">Toutes cat. globales</option>'+catGlobales.map(c=>`<option ${c===vcg?'selected':''}>${c}</option>`).join('');
   fCat.innerHTML='<option value="">Toutes catégories</option>'+cats.map(c=>`<option ${c===vc?'selected':''}>${c}</option>`).join('');
   fEtat.innerHTML='<option value="">Tous états</option>'+etats.map(c=>`<option ${c===ve?'selected':''}>${c}</option>`).join('');
   fStatut.innerHTML='<option value="">Tous statuts</option>'+statuts.map(c=>`<option ${c===vs?'selected':''}>${c}</option>`).join('');
@@ -548,10 +563,73 @@ function switchPTab(id,el){curPTab=id;document.querySelectorAll('.ptab').forEach
 
 function renderPanelTab(tab){
   const body=document.getElementById('panelBody');
-  if(tab==='cat') renderRefList(body,'categories','Catégories',null);
+  if(tab==='catg') renderCatGlobalePanel(body);
+  else if(tab==='cat') renderRefList(body,'categories','Catégories',null);
   else if(tab==='mod') renderModPanel(body);
   else if(tab==='etat') renderRefList(body,'etats','États',null);
   else if(tab==='statut') renderRefList(body,'statuts','Statuts',null);
+}
+
+function renderCatGlobalePanel(body){
+  const globales=Object.keys(REF.catGlobales);
+  body.innerHTML=`
+    <div class="ref-title" style="margin-bottom:6px">Catégories globales et leurs sous-catégories</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px;padding:6px 8px;background:var(--surface2);border-radius:var(--radius)">
+      Chaque catégorie globale regroupe plusieurs catégories. Sélectionnez une catégorie globale pour gérer ses sous-catégories.
+    </div>
+    ${globales.map((glob,gi)=>`
+      <div style="margin-bottom:14px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
+        <div style="display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--surface2);border-bottom:1px solid var(--border)">
+          <span id="cg-span-${gi}" style="flex:1;font-weight:600;font-size:13px">${glob}</span>
+          <button class="ref-smbtn" onclick="editCatGlobale(${gi})" title="Renommer">✏️</button>
+          <button class="ref-smbtn del" onclick="delCatGlobale('${glob}')" title="Supprimer">🗑️</button>
+        </div>
+        <div style="padding:8px 10px">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Sous-catégories associées :</div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">
+            ${REF.categories.map(cat=>{
+              const linked=REF.catGlobales[glob].includes(cat);
+              return `<button onclick="toggleCatInGlobal('${glob}','${cat}')" style="padding:3px 10px;border-radius:99px;font-size:12px;cursor:pointer;border:1px solid ${linked?'#639922':'var(--border2)'};background:${linked?'#eaf3de':'var(--surface)'};color:${linked?'#006644':'var(--muted)'}">${cat}</button>`;
+            }).join('')}
+          </div>
+        </div>
+      </div>`).join('')}
+    <div class="ref-add-row" style="margin-top:4px">
+      <input type="text" id="cgNewVal" placeholder="Nouvelle catégorie globale…"/>
+      <button class="btn btn-primary" style="height:32px;padding:0 12px;font-size:12px" onclick="addCatGlobale()">+ Ajouter</button>
+    </div>`;
+}
+
+function toggleCatInGlobal(glob,cat){
+  if(!REF.catGlobales[glob]) REF.catGlobales[glob]=[];
+  const idx=REF.catGlobales[glob].indexOf(cat);
+  if(idx>=0) REF.catGlobales[glob].splice(idx,1);
+  else REF.catGlobales[glob].push(cat);
+  renderPanelTab('catg');
+}
+function addCatGlobale(){
+  const inp=document.getElementById('cgNewVal');
+  const val=inp.value.trim();if(!val)return;
+  if(REF.catGlobales[val]){alert('Cette catégorie globale existe déjà.');return;}
+  REF.catGlobales[val]=[];inp.value='';renderPanelTab('catg');
+}
+function delCatGlobale(glob){
+  if(!confirm('Supprimer cette catégorie globale ?'))return;
+  delete REF.catGlobales[glob];renderPanelTab('catg');
+}
+function editCatGlobale(gi){
+  const glob=Object.keys(REF.catGlobales)[gi];
+  const span=document.getElementById('cg-span-'+gi);
+  span.innerHTML=`<input type="text" value="${glob}" style="height:26px;font-size:13px;border:1px solid var(--border2);border-radius:4px;padding:0 6px;width:100%;font-family:var(--font)" onblur="saveCatGlobale(this,'${glob}')" onkeydown="if(event.key==='Enter')this.blur()"/>`;
+  span.querySelector('input').focus();
+}
+function saveCatGlobale(inp,oldName){
+  const val=inp.value.trim();if(!val)return;
+  if(val!==oldName){
+    REF.catGlobales[val]=REF.catGlobales[oldName];
+    delete REF.catGlobales[oldName];
+  }
+  renderPanelTab('catg');
 }
 
 function renderRefList(body,refKey,title,parentCat){
@@ -652,12 +730,19 @@ function saveModItem(inp,idx){
 /* ═══════════════════════════════════════
    EXPORT
 ═══════════════════════════════════════ */
-const HDR_KEYS=["numInv","categorie","nom","modele","serie","nb","affectation","beneficiaire","etat","statut","annee","obs"];
-const HDR_LABELS={"numInv":"N° Inventaire","categorie":"Catégorie","nom":"Désignation","modele":"Modèle","serie":"N° Série","nb":"Nombre","affectation":"Affectation","beneficiaire":"Bénéficiaire","etat":"État","statut":"Statut","annee":"Année","obs":"Observations"};
+function getCatGlobale(categorie){
+  for(const [glob,cats] of Object.entries(REF.catGlobales)){
+    if(cats.includes(categorie)) return glob;
+  }
+  return 'Non classé';
+}
+
+const HDR_KEYS=["numInv","catGlobale","categorie","nom","modele","serie","nb","affectation","beneficiaire","etat","statut","annee","obs"];
+const HDR_LABELS={"numInv":"N° Inventaire","catGlobale":"Catégorie globale","categorie":"Catégorie","nom":"Désignation","modele":"Modèle","serie":"N° Série","nb":"Nombre","affectation":"Affectation","beneficiaire":"Bénéficiaire","etat":"État","statut":"Statut","annee":"Année","obs":"Observations"};
 
 function exportExcel(){
   const wb=XLSX.utils.book_new();
-  const rows=[HDR_KEYS.map(k=>HDR_LABELS[k])].concat(items.map(i=>HDR_KEYS.map(k=>i[k]??'')));
+  const rows=[HDR_KEYS.map(k=>HDR_LABELS[k])].concat(items.map(i=>HDR_KEYS.map(k=>k==='catGlobale'?getCatGlobale(i.categorie):(i[k]??''))));
   const ws=XLSX.utils.aoa_to_sheet(rows);
   ws['!cols']=[10,18,18,16,16,8,14,14,14,14,22].map(w=>({wch:w}));
   XLSX.utils.book_append_sheet(wb,ws,'Inventaire');
@@ -801,6 +886,12 @@ render();
             <option value="all">Liste complète</option>
           </select>
         </div>
+        <div class="field"><label>Filtrer par catégorie globale</label>
+          <select id="etatFCatG" onchange="previewEtat()"><option value="">Toutes</option></select>
+        </div>
+        <div class="field"><label>Filtrer par département</label>
+          <select id="etatFDept" onchange="previewEtat()"><option value="">Tous</option></select>
+        </div>
         <div class="field"><label>Filtrer par catégorie</label>
           <select id="etatFCat" onchange="previewEtat()"><option value="">Toutes</option></select>
         </div>
@@ -833,10 +924,13 @@ render();
    ÉTATS & RAPPORTS
 ═══════════════════════════════════════ */
 function openEtats(){
-  // Peupler les filtres
+  const catGlobales=Object.keys(REF.catGlobales).sort();
+  const depts=[...new Set(items.map(i=>i.affectation||'Non défini'))].sort();
   const cats=[...new Set(items.map(i=>i.categorie))].sort();
   const etats=[...new Set(items.map(i=>i.etat))].sort();
   const statuts=[...new Set(items.map(i=>i.statut))].sort();
+  document.getElementById('etatFCatG').innerHTML='<option value="">Toutes</option>'+catGlobales.map(c=>`<option>${c}</option>`).join('');
+  document.getElementById('etatFDept').innerHTML='<option value="">Tous</option>'+depts.map(d=>`<option>${d}</option>`).join('');
   document.getElementById('etatFCat').innerHTML='<option value="">Toutes</option>'+cats.map(c=>`<option>${c}</option>`).join('');
   document.getElementById('etatFEtat').innerHTML='<option value="">Tous</option>'+etats.map(e=>`<option>${e}</option>`).join('');
   document.getElementById('etatFStatut').innerHTML='<option value="">Tous</option>'+statuts.map(s=>`<option>${s}</option>`).join('');
@@ -845,10 +939,15 @@ function openEtats(){
 }
 
 function getFilteredItems(){
+  const fcg=document.getElementById('etatFCatG').value;
+  const fd=document.getElementById('etatFDept').value;
   const fc=document.getElementById('etatFCat').value;
   const fe=document.getElementById('etatFEtat').value;
   const fs=document.getElementById('etatFStatut').value;
-  return items.filter(i=>(!fc||i.categorie===fc)&&(!fe||i.etat===fe)&&(!fs||i.statut===fs));
+  return items.filter(i=>{
+    const cg=getCatGlobale(i.categorie);
+    return(!fcg||cg===fcg)&&(!fd||(i.affectation||'Non défini')===fd)&&(!fc||i.categorie===fc)&&(!fe||i.etat===fe)&&(!fs||i.statut===fs);
+  });
 }
 
 function buildPrintDoc(forPDF=false){
@@ -949,11 +1048,11 @@ function exportEtatPDF(){
 function exportEtatExcel(){
   const type=document.getElementById('etatType').value;
   const comment=document.getElementById('etatComment').value.trim();
-  const data=getFilteredItems();
+  const data=getFilteredItems().map(i=>({...i,catGlobale:getCatGlobale(i.categorie)}));
   const typeLabels={categorie:'Par catégorie',modele:'Par marque/modèle',affectation:'Par département',statut:'Par statut',etat:'Par état',all:'Liste complète'};
   const wb=XLSX.utils.book_new();
-  const HDR=['N° Inventaire','Catégorie','Désignation','Modèle','N° Série','Nombre','Affectation','Bénéficiaire','État','Statut'];
-  const KEYS=['numInv','categorie','nom','modele','serie','nb','affectation','beneficiaire','etat','statut','annee'];
+  const HDR=['N° Inventaire','Catégorie globale','Catégorie','Désignation','Modèle','N° Série','Nombre','Affectation','Bénéficiaire','État','Statut','Année'];
+  const KEYS=['numInv','catGlobale','categorie','nom','modele','serie','nb','affectation','beneficiaire','etat','statut','annee'];
 
   if(type==='all'){
     const rows=[HDR].concat(data.map(i=>KEYS.map(k=>i[k]||'')));
@@ -993,11 +1092,11 @@ function exportEtatExcel(){
 ═══════════════════════════════════════ */
 function saveJSON(){
   const data={
-    version:"2.0",
+    version:"2.1",
     savedAt:new Date().toISOString(),
     items:items,
     nextId:nextId,
-    ref:REF
+    ref:REF  // inclut catGlobales
   };
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
@@ -1022,10 +1121,11 @@ function loadJSON(file){
       items=data.items||[];
       nextId=data.nextId||items.length+1;
       if(data.ref){
-        if(data.ref.categories) REF.categories=data.ref.categories;
-        if(data.ref.modeles)    REF.modeles=data.ref.modeles;
-        if(data.ref.etats)      REF.etats=data.ref.etats;
-        if(data.ref.statuts)    REF.statuts=data.ref.statuts;
+        if(data.ref.catGlobales) REF.catGlobales=data.ref.catGlobales;
+        if(data.ref.categories)  REF.categories=data.ref.categories;
+        if(data.ref.modeles)     REF.modeles=data.ref.modeles;
+        if(data.ref.etats)       REF.etats=data.ref.etats;
+        if(data.ref.statuts)     REF.statuts=data.ref.statuts;
       }
       render();
       showToast('📂 '+items.length+' article(s) chargé(s) avec succès !');
