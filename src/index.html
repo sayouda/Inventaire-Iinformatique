@@ -737,20 +737,24 @@ function getCatGlobale(categorie){
   return 'Non classé';
 }
 
-const HDR_KEYS=["numInv","catGlobale","categorie","nom","modele","serie","nb","affectation","beneficiaire","etat","statut","annee","obs"];
-const HDR_LABELS={"numInv":"N° Inventaire","catGlobale":"Catégorie globale","categorie":"Catégorie","nom":"Désignation","modele":"Modèle","serie":"N° Série","nb":"Nombre","affectation":"Affectation","beneficiaire":"Bénéficiaire","etat":"État","statut":"Statut","annee":"Année","obs":"Observations"};
+const HDR_KEYS=["numInv","categorie","nom","modele","serie","nb","affectation","beneficiaire","etat","statut","annee","obs"];
+const HDR_LABELS={"numInv":"N° Inventaire","categorie":"Catégorie","nom":"Désignation","modele":"Modèle","serie":"N° Série","nb":"Nombre","affectation":"Affectation","beneficiaire":"Bénéficiaire","etat":"État","statut":"Statut","annee":"Année","obs":"Observations"};
 
 function exportExcel(){
   const wb=XLSX.utils.book_new();
-  const rows=[HDR_KEYS.map(k=>HDR_LABELS[k])].concat(items.map(i=>HDR_KEYS.map(k=>k==='catGlobale'?getCatGlobale(i.categorie):(i[k]??''))));
+  const exportHDR=['N° Inventaire','Catégorie globale','Catégorie','Désignation','Modèle','N° Série','Nombre','Affectation','Bénéficiaire','État','Statut','Année','Observations'];
+  const rows=[exportHDR].concat(items.map(i=>[
+    i.numInv, getCatGlobale(i.categorie), i.categorie, i.nom, i.modele||'', i.serie||'',
+    i.nb||1, i.affectation||'', i.beneficiaire||'', i.etat, i.statut, i.annee||'', i.obs||''
+  ]));
   const ws=XLSX.utils.aoa_to_sheet(rows);
-  ws['!cols']=[10,18,18,16,16,8,14,14,14,14,22].map(w=>({wch:w}));
+  ws['!cols']=[12,22,18,18,16,16,8,14,14,12,12,8,24].map(w=>({wch:w}));
   XLSX.utils.book_append_sheet(wb,ws,'Inventaire');
   XLSX.writeFile(wb,'Inventaire_Materiel.xlsx');
 }
 function exportTemplate(){
   const wb=XLSX.utils.book_new();
-  const rows=[HDR_KEYS.map(k=>HDR_LABELS[k]),["211/1","Matériel Audio Visuel","Caméra","Panasonic","F398175000042",1,"Magasin","John","Fonctionnel","En service",""]];
+  const rows=[["N° Inventaire","Catégorie","Désignation","Modèle","N° Série","Nombre","Affectation","Bénéficiaire","État","Statut","Année","Observations"],["211/1","Matériel Audio Visuel","Caméra","Panasonic","F398175000042",1,"Magasin","John","Fonctionnel","En service","2024",""]];
   const ws=XLSX.utils.aoa_to_sheet(rows);
   ws['!cols']=[10,18,18,16,16,8,14,14,14,14,22].map(w=>({wch:w}));
   XLSX.utils.book_append_sheet(wb,ws,'Modèle');
@@ -800,6 +804,7 @@ function loadFile(file){
         if(!obj.statut||!REF.statuts.includes(obj.statut))obj.statut=REF.statuts[0];
         obj.nb=parseInt(obj.nb)||1;
         HDR_KEYS.forEach(k=>{if(obj[k]===undefined)obj[k]='';});
+        delete obj.catGlobale; // catGlobale est calculée, pas stockée
         return obj;
       });
       const pC=["numInv","categorie","nom","modele","etat","statut"];
@@ -953,7 +958,7 @@ function getFilteredItems(){
 function buildPrintDoc(forPDF=false){
   const type=document.getElementById('etatType').value;
   const comment=document.getElementById('etatComment').value.trim();
-  const data=getFilteredItems();
+  const data=getFilteredItems().map(i=>({...i,catGlobale:getCatGlobale(i.categorie)}));
   const now=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'});
   const typeLabels={categorie:'Par catégorie',modele:'Par marque / modèle',affectation:'Par département',statut:'Par statut',etat:'Par état',all:'Liste complète'};
 
@@ -1053,6 +1058,7 @@ function exportEtatExcel(){
   const wb=XLSX.utils.book_new();
   const HDR=['N° Inventaire','Catégorie globale','Catégorie','Désignation','Modèle','N° Série','Nombre','Affectation','Bénéficiaire','État','Statut','Année'];
   const KEYS=['numInv','catGlobale','categorie','nom','modele','serie','nb','affectation','beneficiaire','etat','statut','annee'];
+  // catGlobale calculée dans data déjà
 
   if(type==='all'){
     const rows=[HDR].concat(data.map(i=>KEYS.map(k=>i[k]||'')));
