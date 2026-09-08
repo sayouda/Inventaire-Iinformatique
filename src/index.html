@@ -572,41 +572,98 @@ function renderPanelTab(tab){
 
 function renderCatGlobalePanel(body){
   const globales=Object.keys(REF.catGlobales);
-  body.innerHTML=`
-    <div class="ref-title" style="margin-bottom:6px">Catégories globales et leurs sous-catégories</div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:10px;padding:6px 8px;background:var(--surface2);border-radius:var(--radius)">
-      Chaque catégorie globale regroupe plusieurs catégories. Sélectionnez une catégorie globale pour gérer ses sous-catégories.
-    </div>
-    ${globales.map((glob,gi)=>`
-      <div style="margin-bottom:14px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
-        <div style="display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--surface2);border-bottom:1px solid var(--border)">
-          <span id="cg-span-${gi}" style="flex:1;font-weight:600;font-size:13px">${glob}</span>
-          <button class="ref-smbtn" onclick="editCatGlobale(${gi})" title="Renommer">✏️</button>
-          <button class="ref-smbtn del" onclick="delCatGlobale('${glob}')" title="Supprimer">🗑️</button>
-        </div>
-        <div style="padding:8px 10px">
-          <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Sous-catégories associées :</div>
-          <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">
-            ${REF.categories.map(cat=>{
-              const linked=REF.catGlobales[glob].includes(cat);
-              return `<button onclick="toggleCatInGlobal('${glob}','${cat}')" style="padding:3px 10px;border-radius:99px;font-size:12px;cursor:pointer;border:1px solid ${linked?'#639922':'var(--border2)'};background:${linked?'#eaf3de':'var(--surface)'};color:${linked?'#006644':'var(--muted)'}">${cat}</button>`;
-            }).join('')}
-          </div>
-        </div>
-      </div>`).join('')}
-    <div class="ref-add-row" style="margin-top:4px">
-      <input type="text" id="cgNewVal" placeholder="Nouvelle catégorie globale…"/>
-      <button class="btn btn-primary" style="height:32px;padding:0 12px;font-size:12px" onclick="addCatGlobale()">+ Ajouter</button>
-    </div>`;
+  // Utiliser un conteneur DOM pour éviter les problèmes d'échappement
+  const wrapper=document.createElement('div');
+
+  const title=document.createElement('div');
+  title.className='ref-title';
+  title.style.marginBottom='6px';
+  title.textContent='Catégories globales et leurs sous-catégories';
+  wrapper.appendChild(title);
+
+  const hint=document.createElement('div');
+  hint.style.cssText='font-size:11px;color:var(--muted);margin-bottom:10px;padding:6px 8px;background:var(--surface2);border-radius:var(--radius)';
+  hint.textContent='Cliquez sur une catégorie pour l'associer (vert) ou la désassocier.';
+  wrapper.appendChild(hint);
+
+  globales.forEach((glob,gi)=>{
+    const card=document.createElement('div');
+    card.style.cssText='margin-bottom:14px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden';
+
+    // Header catégorie globale
+    const hd=document.createElement('div');
+    hd.style.cssText='display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--surface2);border-bottom:1px solid var(--border)';
+    const sp=document.createElement('span');
+    sp.id='cg-span-'+gi;
+    sp.style.cssText='flex:1;font-weight:600;font-size:13px';
+    sp.textContent=glob;
+    const btnEdit=document.createElement('button');
+    btnEdit.className='ref-smbtn';
+    btnEdit.title='Renommer';
+    btnEdit.textContent='✏️';
+    btnEdit.onclick=()=>editCatGlobale(gi);
+    const btnDel=document.createElement('button');
+    btnDel.className='ref-smbtn del';
+    btnDel.title='Supprimer';
+    btnDel.textContent='🗑️';
+    btnDel.onclick=()=>delCatGlobale(glob);
+    hd.appendChild(sp);hd.appendChild(btnEdit);hd.appendChild(btnDel);
+    card.appendChild(hd);
+
+    // Corps : sous-catégories
+    const bd=document.createElement('div');
+    bd.style.cssText='padding:8px 10px';
+    const lbl=document.createElement('div');
+    lbl.style.cssText='font-size:11px;color:var(--muted);margin-bottom:6px';
+    lbl.textContent='Sous-catégories associées :';
+    bd.appendChild(lbl);
+    const pills=document.createElement('div');
+    pills.style.cssText='display:flex;flex-wrap:wrap;gap:5px;margin-bottom:4px';
+    REF.categories.forEach(cat=>{
+      const linked=REF.catGlobales[glob].includes(cat);
+      const btn=document.createElement('button');
+      btn.textContent=cat;
+      btn.style.cssText=`padding:3px 10px;border-radius:99px;font-size:12px;cursor:pointer;border:1px solid ${linked?'#639922':'var(--border2)'};background:${linked?'#eaf3de':'var(--surface)'};color:${linked?'#006644':'var(--muted)'}`;
+      btn.onclick=()=>{
+        if(!REF.catGlobales[glob])REF.catGlobales[glob]=[];
+        const idx=REF.catGlobales[glob].indexOf(cat);
+        if(idx>=0)REF.catGlobales[glob].splice(idx,1);
+        else REF.catGlobales[glob].push(cat);
+        renderPanelTab('catg');
+      };
+      pills.appendChild(btn);
+    });
+    bd.appendChild(pills);
+    card.appendChild(bd);
+    wrapper.appendChild(card);
+  });
+
+  // Zone ajout nouvelle catégorie globale
+  const addRow=document.createElement('div');
+  addRow.className='ref-add-row';
+  addRow.style.marginTop='8px';
+  const inp=document.createElement('input');
+  inp.type='text';
+  inp.id='cgNewVal';
+  inp.placeholder='Nouvelle catégorie globale…';
+  inp.style.cssText='height:34px;flex:1;font-size:13px;border:1px solid var(--border2);border-radius:var(--radius);padding:0 10px;font-family:var(--font);outline:none';
+  inp.addEventListener('click', e=>e.stopPropagation());
+  inp.addEventListener('focus', e=>e.stopPropagation());
+  inp.addEventListener('keydown', e=>{ e.stopPropagation(); if(e.key==='Enter'){ e.preventDefault(); addCatGlobale(); } });
+  const addBtn=document.createElement('button');
+  addBtn.className='btn btn-primary';
+  addBtn.style.cssText='height:34px;padding:0 14px;font-size:13px;flex-shrink:0';
+  addBtn.textContent='+ Ajouter';
+  addBtn.addEventListener('click', e=>{ e.stopPropagation(); addCatGlobale(); });
+  addRow.appendChild(inp);addRow.appendChild(addBtn);
+  wrapper.appendChild(addRow);
+
+  body.innerHTML='';
+  body.appendChild(wrapper);
+  // Focus sur l'input après rendu pour éviter les problèmes
+  setTimeout(()=>{ const i=document.getElementById('cgNewVal'); if(i) i.addEventListener('focus',()=>{}); },100);
 }
 
-function toggleCatInGlobal(glob,cat){
-  if(!REF.catGlobales[glob]) REF.catGlobales[glob]=[];
-  const idx=REF.catGlobales[glob].indexOf(cat);
-  if(idx>=0) REF.catGlobales[glob].splice(idx,1);
-  else REF.catGlobales[glob].push(cat);
-  renderPanelTab('catg');
-}
 function addCatGlobale(){
   const inp=document.getElementById('cgNewVal');
   const val=inp.value.trim();if(!val)return;
@@ -620,11 +677,19 @@ function delCatGlobale(glob){
 function editCatGlobale(gi){
   const glob=Object.keys(REF.catGlobales)[gi];
   const span=document.getElementById('cg-span-'+gi);
-  span.innerHTML=`<input type="text" value="${glob}" style="height:26px;font-size:13px;border:1px solid var(--border2);border-radius:4px;padding:0 6px;width:100%;font-family:var(--font)" onblur="saveCatGlobale(this,'${glob}')" onkeydown="if(event.key==='Enter')this.blur()"/>`;
-  span.querySelector('input').focus();
+  const input=document.createElement('input');
+  input.type='text';input.value=glob;
+  input.style.cssText='height:26px;font-size:13px;border:1px solid var(--border2);border-radius:4px;padding:0 6px;width:100%;font-family:var(--font);outline:none';
+  input.addEventListener('click',  e=>e.stopPropagation());
+  input.addEventListener('focus',  e=>e.stopPropagation());
+  input.addEventListener('keydown',e=>{ e.stopPropagation(); if(e.key==='Enter'){e.preventDefault();input.blur();} });
+  input.addEventListener('blur',   ()=>saveCatGlobale(input.value,glob));
+  span.innerHTML='';
+  span.appendChild(input);
+  setTimeout(()=>input.focus(),50);
 }
-function saveCatGlobale(inp,oldName){
-  const val=inp.value.trim();if(!val)return;
+function saveCatGlobale(val,oldName){
+  val=val.trim();if(!val)return;
   if(val!==oldName){
     REF.catGlobales[val]=REF.catGlobales[oldName];
     delete REF.catGlobales[oldName];
@@ -694,8 +759,16 @@ function editRefItem(idx,refKey,parentCat){
   const list=parentCat?REF.modeles[parentCat]:REF[refKey];
   const span=document.getElementById('ref-span-'+idx);
   const old=list[idx];
-  span.innerHTML=`<input type="text" value="${old}" style="height:26px;font-size:13px;border:1px solid var(--border2);border-radius:4px;padding:0 6px;width:100%;font-family:var(--font)" onblur="saveRefItem(this,${idx},'${refKey}',${parentCat?`'${parentCat}'`:null})" onkeydown="if(event.key==='Enter')this.blur()"/>`;
-  span.querySelector('input').focus();
+  const input=document.createElement('input');
+  input.type='text'; input.value=old;
+  input.style.cssText='height:26px;font-size:13px;border:1px solid var(--border2);border-radius:4px;padding:0 6px;width:100%;font-family:var(--font);outline:none';
+  input.addEventListener('click',  e=>e.stopPropagation());
+  input.addEventListener('focus',  e=>e.stopPropagation());
+  input.addEventListener('keydown',e=>{ e.stopPropagation(); if(e.key==='Enter'){e.preventDefault();input.blur();} });
+  input.addEventListener('blur',   ()=>saveRefItem(input,idx,refKey,parentCat));
+  span.innerHTML='';
+  span.appendChild(input);
+  setTimeout(()=>input.focus(),50);
 }
 function saveRefItem(inp,idx,refKey,parentCat){
   const val=inp.value.trim();if(!val)return;
