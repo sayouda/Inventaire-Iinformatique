@@ -949,40 +949,23 @@ render();
 <div class="overlay" id="etatsOv" style="display:none" onclick="closeOvBg(event,'etatsOv')">
   <div class="modal modal-etats" onclick="event.stopPropagation()">
     <div class="modal-head">
-      <h2>🖨️ États & Rapports</h2>
+      <h2>🖨️ Fiche d'Inventaire</h2>
       <button class="close-btn" onclick="closeOv('etatsOv')">✕</button>
     </div>
     <div class="modal-body">
       <div class="etat-filters">
-        <div class="field"><label>Type de regroupement</label>
-          <select id="etatType" onchange="previewEtat()">
-            <option value="categorie">Par catégorie</option>
-            <option value="modele">Par marque / modèle</option>
-            <option value="affectation">Par département</option>
-            <option value="statut">Par statut</option>
-            <option value="etat">Par état</option>
-            <option value="all">Liste complète</option>
-          </select>
+        <div class="field"><label>Filtrer par département</label>
+          <select id="etatFDept" onchange="previewEtat()"><option value="">Tous</option></select>
+        </div>
+        <div class="field"><label>Filtrer par bénéficiaire</label>
+          <select id="etatFBen" onchange="previewEtat()"><option value="">Tous</option></select>
         </div>
         <div class="field"><label>Filtrer par catégorie globale</label>
           <select id="etatFCatG" onchange="previewEtat()"><option value="">Toutes</option></select>
         </div>
-        <div class="field"><label>Filtrer par département</label>
-          <select id="etatFDept" onchange="previewEtat()"><option value="">Tous</option></select>
-        </div>
-        <div class="field"><label>Filtrer par catégorie</label>
-          <select id="etatFCat" onchange="previewEtat()"><option value="">Toutes</option></select>
-        </div>
         <div class="field"><label>Filtrer par état</label>
           <select id="etatFEtat" onchange="previewEtat()"><option value="">Tous</option></select>
         </div>
-        <div class="field"><label>Filtrer par statut</label>
-          <select id="etatFStatut" onchange="previewEtat()"><option value="">Tous</option></select>
-        </div>
-      </div>
-      <div class="field" style="margin-bottom:10px">
-        <label>Commentaires / Explications (optionnel)</label>
-        <textarea class="etat-comment" id="etatComment" placeholder="Ex: Rapport du 11/06/2026 — 5 PC Acer en attente de renouvellement..." oninput="previewEtat()"></textarea>
       </div>
       <div class="field"><label>Aperçu</label>
         <div class="preview-zone" id="etatPreview"></div>
@@ -1004,14 +987,12 @@ render();
 function openEtats(){
   const catGlobales=Object.keys(REF.catGlobales).sort();
   const depts=[...new Set(items.map(i=>i.affectation||'Non défini'))].sort();
-  const cats=[...new Set(items.map(i=>i.categorie))].sort();
+  const bens=[...new Set(items.map(i=>i.beneficiaire||'').filter(Boolean))].sort();
   const etats=[...new Set(items.map(i=>i.etat))].sort();
-  const statuts=[...new Set(items.map(i=>i.statut))].sort();
   document.getElementById('etatFCatG').innerHTML='<option value="">Toutes</option>'+catGlobales.map(c=>`<option>${c}</option>`).join('');
   document.getElementById('etatFDept').innerHTML='<option value="">Tous</option>'+depts.map(d=>`<option>${d}</option>`).join('');
-  document.getElementById('etatFCat').innerHTML='<option value="">Toutes</option>'+cats.map(c=>`<option>${c}</option>`).join('');
+  document.getElementById('etatFBen').innerHTML='<option value="">Tous</option>'+bens.map(b=>`<option>${b}</option>`).join('');
   document.getElementById('etatFEtat').innerHTML='<option value="">Tous</option>'+etats.map(e=>`<option>${e}</option>`).join('');
-  document.getElementById('etatFStatut').innerHTML='<option value="">Tous</option>'+statuts.map(s=>`<option>${s}</option>`).join('');
   previewEtat();
   document.getElementById('etatsOv').style.display='flex';
 }
@@ -1019,74 +1000,111 @@ function openEtats(){
 function getFilteredItems(){
   const fcg=document.getElementById('etatFCatG').value;
   const fd=document.getElementById('etatFDept').value;
-  const fc=document.getElementById('etatFCat').value;
+  const fb=document.getElementById('etatFBen').value;
   const fe=document.getElementById('etatFEtat').value;
-  const fs=document.getElementById('etatFStatut').value;
   return items.filter(i=>{
     const cg=getCatGlobale(i.categorie);
-    return(!fcg||cg===fcg)&&(!fd||(i.affectation||'Non défini')===fd)&&(!fc||i.categorie===fc)&&(!fe||i.etat===fe)&&(!fs||i.statut===fs);
+    return(!fcg||cg===fcg)&&(!fd||(i.affectation||'Non défini')===fd)&&(!fb||(i.beneficiaire||'')===fb)&&(!fe||i.etat===fe);
   });
 }
 
-function buildPrintDoc(forPDF=false){
-  const type=document.getElementById('etatType').value;
-  const comment=document.getElementById('etatComment').value.trim();
+// ─── CSS FICHE INVENTAIRE ───
+const FICHE_CSS=`
+  body{font-family:'Times New Roman',serif;font-size:12px;color:#000;margin:0;padding:0}
+  .fiche{padding:20px 28px;max-width:800px;margin:0 auto}
+  .fiche-titre{text-align:center;font-size:17px;font-weight:bold;text-decoration:underline;margin-bottom:16px;letter-spacing:1px}
+  .fiche-info{margin-bottom:14px;font-size:12px;line-height:2}
+  .fiche-info b{text-transform:uppercase}
+  .section-titre{background:#000;color:#fff;text-align:center;font-weight:bold;font-size:13px;padding:6px 10px;margin-top:18px}
+  .fiche-table{width:100%;border-collapse:collapse;margin-top:0}
+  .fiche-table th{border:1px solid #000;padding:5px 8px;background:#e8e8e8;font-weight:bold;font-size:11px;text-align:center}
+  .fiche-table td{border:1px solid #000;padding:5px 8px;font-size:11px}
+  .fiche-table tr:nth-child(even) td{background:#f5f5f5}
+  .fiche-footer{margin-top:20px;padding-top:8px;border-top:1px solid #000;font-size:10px;color:#555;display:flex;justify-content:space-between}
+  @media print{body{margin:0}@page{margin:12mm 15mm}}
+`;
+
+function buildFicheDoc(){
   const data=getFilteredItems().map(i=>({...i,catGlobale:getCatGlobale(i.categorie)}));
   const now=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'});
-  const typeLabels={categorie:'Par catégorie',modele:'Par marque / modèle',affectation:'Par département',statut:'Par statut',etat:'Par état',all:'Liste complète'};
+  const dept=document.getElementById('etatFDept').value||'Tous les départements';
+  const ben=document.getElementById('etatFBen').value||'Tous';
 
-  const fonc=data.filter(i=>i.etat==='Fonctionnel').length;
-  const panne=data.filter(i=>i.etat==='En panne'||i.etat==='Hors service').length;
-  const nb=data.reduce((s,i)=>s+(parseInt(i.nb)||1),0);
+  // Grouper par catégorie globale
+  const grouped={};
+  data.forEach(i=>{
+    const cg=i.catGlobale||'Non classé';
+    if(!grouped[cg])grouped[cg]=[];
+    grouped[cg].push(i);
+  });
 
-  let body='';
+  // Colonnes spécifiques par catégorie globale
+  // CatG "Matériel informatique et électronique" → Désignation, Modèle, N°Série, N°Inventaire, Année
+  // Autres → Désignation, Marque/Modèle, Nombre, N°Série, N°Inventaire, Année
+  const isInfoElec = cg => cg.toLowerCase().includes('informatique') || cg.toLowerCase().includes('électronique') || cg.toLowerCase().includes('electronique');
 
-  if(type==='all'){
-    body+=`<div class="print-section">
-      <div class="print-section-title">Liste complète — ${data.length} article(s)</div>
-      <table class="print-table">
-        <thead><tr><th>N° Inv.</th><th>Catégorie</th><th>Désignation</th><th>Modèle</th><th>N° Série</th><th>Qté</th><th>Affectation</th><th>Bénéficiaire</th><th>État</th><th>Statut</th></tr></thead>
-        <tbody>${data.map(i=>`<tr><td>${i.numInv}</td><td>${i.categorie}</td><td>${i.nom}</td><td>${i.modele||'—'}</td><td>${i.serie||'—'}</td><td style="text-align:center">${i.nb||1}</td><td>${i.affectation||'—'}</td><td>${i.beneficiaire||'—'}</td><td>${i.etat}</td><td>${i.statut}</td></tr>`).join('')}</tbody>
-      </table></div>`;
-  } else {
-    const grouped={};
-    data.forEach(i=>{const k=i[type]||'Non défini';if(!grouped[k])grouped[k]=[];grouped[k].push(i);});
-    Object.entries(grouped).sort((a,b)=>a[0].localeCompare(b[0],'fr')).forEach(([grp,rows])=>{
-      body+=`<div class="print-section">
-        <div class="print-section-title">${grp} — ${rows.length} article(s)</div>
-        <table class="print-table">
-          <thead><tr><th>N° Inv.</th><th>Catégorie</th><th>Désignation</th><th>Modèle</th><th>N° Série</th><th>Qté</th><th>Affectation</th><th>Bénéficiaire</th><th>État</th><th>Statut</th></tr></thead>
-          <tbody>${rows.map(i=>`<tr><td>${i.numInv}</td><td>${i.categorie}</td><td>${i.nom}</td><td>${i.modele||'—'}</td><td>${i.serie||'—'}</td><td style="text-align:center">${i.nb||1}</td><td>${i.affectation||'—'}</td><td>${i.beneficiaire||'—'}</td><td>${i.etat}</td><td>${i.statut}</td></tr>`).join('')}</tbody>
-        </table></div>`;
-    });
-  }
+  let sections='';
+  Object.entries(grouped).sort((a,b)=>a[0].localeCompare(b[0],'fr')).forEach(([cg,rows])=>{
+    const infoElec=isInfoElec(cg);
+    sections+=`<div class="section-titre">${cg}</div>`;
+    if(infoElec){
+      sections+=`<table class="fiche-table">
+        <thead><tr>
+          <th style="width:22%">Désignation</th>
+          <th style="width:28%">Modèle</th>
+          <th style="width:25%">N° Série</th>
+          <th style="width:14%">N° Inventaire</th>
+          <th style="width:11%">Année</th>
+        </tr></thead>
+        <tbody>${rows.map(i=>`<tr>
+          <td>${i.nom||''}</td>
+          <td>${i.modele||''}</td>
+          <td>${i.serie||''}</td>
+          <td style="text-align:center">${i.numInv||''}</td>
+          <td style="text-align:center">${i.annee||''}</td>
+        </tr>`).join('')}</tbody>
+      </table>`;
+    } else {
+      sections+=`<table class="fiche-table">
+        <thead><tr>
+          <th style="width:22%">Désignation</th>
+          <th style="width:26%">Marque</th>
+          <th style="width:8%">Nombre</th>
+          <th style="width:20%">N° Série</th>
+          <th style="width:13%">N° Inventaire</th>
+          <th style="width:11%">Année</th>
+        </tr></thead>
+        <tbody>${rows.map(i=>`<tr>
+          <td>${i.nom||''}</td>
+          <td>${i.modele||''}</td>
+          <td style="text-align:center">${i.nb||1}</td>
+          <td>${i.serie||''}</td>
+          <td style="text-align:center">${i.numInv||''}</td>
+          <td style="text-align:center">${i.annee||''}</td>
+        </tr>`).join('')}</tbody>
+      </table>`;
+    }
+  });
 
-  return `<div class="print-doc">
-    <div class="print-header">
-      <div>
-        <h2>État du parc matériel — ${typeLabels[type]}</h2>
-        <div class="meta">Total : ${data.length} article(s) &nbsp;·&nbsp; Quantité : ${nb} &nbsp;·&nbsp; Fonctionnels : ${fonc} &nbsp;·&nbsp; En panne/HS : ${panne}</div>
-      </div>
-      <div class="date">Édité le ${now}</div>
+  return `<div class="fiche">
+    <div class="fiche-titre">FICHE D'INVENTAIRE</div>
+    <div class="fiche-info">
+      <b>Affectation :</b> ${dept}<br>
+      <b>Bureau/Local :</b> ${ben}
     </div>
-    <div class="print-summary">
-      <div class="print-kpi"><div class="print-kpi-label">Articles</div><div class="print-kpi-val">${data.length}</div></div>
-      <div class="print-kpi"><div class="print-kpi-label">Quantité</div><div class="print-kpi-val">${nb}</div></div>
-      <div class="print-kpi"><div class="print-kpi-label">Fonctionnels</div><div class="print-kpi-val" style="color:#006644">${fonc}</div></div>
-      <div class="print-kpi"><div class="print-kpi-label">En panne/HS</div><div class="print-kpi-val" style="color:#bf2600">${panne}</div></div>
-    </div>
-    ${comment?`<div class="print-comment"><strong>Observations :</strong> ${comment}</div>`:''}
-    ${body}
-    <div class="print-footer"><span>Inventaire Matériel v2.0</span><span>${now}</span></div>
+    ${sections}
+    <div class="fiche-footer"><span>Inventaire Matériel v2.0</span><span>Édité le ${now}</span></div>
   </div>`;
 }
 
 function previewEtat(){
-  document.getElementById('etatPreview').innerHTML=buildPrintDoc();
+  const doc=buildFicheDoc();
+  document.getElementById('etatPreview').innerHTML=`<style>${FICHE_CSS.replace('@media print{body{margin:0}@page{margin:12mm 15mm}}','')}</style>${doc}`;
 }
 
 function printEtat(){
-  document.getElementById('printZone').innerHTML=buildPrintDoc();
+  const doc=buildFicheDoc();
+  document.getElementById('printZone').innerHTML=`<style>${FICHE_CSS}</style>${doc}`;
   document.getElementById('printZone').style.display='block';
   window.print();
   document.getElementById('printZone').style.display='none';
@@ -1094,78 +1112,62 @@ function printEtat(){
 }
 
 function exportEtatPDF(){
-  const doc=buildPrintDoc(true);
+  const doc=buildFicheDoc();
   const win=window.open('','_blank','width=900,height=700');
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>État Inventaire</title>
-  <style>
-    body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;color:#111;margin:0;padding:0}
-    .print-doc{padding:24px}
-    .print-header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1a1a18;padding-bottom:12px;margin-bottom:16px}
-    .print-header h2{font-size:18px;font-weight:700;margin:0 0 4px}
-    .print-header .meta{font-size:11px;color:#555;line-height:1.6}
-    .print-header .date{font-size:12px;color:#555;text-align:right}
-    .print-comment{background:#fffae6;border-left:4px solid #e6c84a;padding:8px 12px;margin-bottom:14px;font-size:12px;line-height:1.6}
-    .print-section{margin-bottom:18px}
-    .print-section-title{font-size:13px;font-weight:700;background:#1a1a18;color:#fff;padding:6px 12px;margin-bottom:0}
-    .print-table{width:100%;border-collapse:collapse;font-size:11px}
-    .print-table th{background:#f0f2f5;padding:5px 8px;text-align:left;border:1px solid #dde1e7;font-size:10px;font-weight:700;text-transform:uppercase;color:#626f86}
-    .print-table td{padding:5px 8px;border:1px solid #dde1e7}
-    .print-table tr:nth-child(even) td{background:#f8f9fa}
-    .print-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
-    .print-kpi{border:1px solid #dde1e7;border-radius:6px;padding:8px 12px;text-align:center}
-    .print-kpi-label{font-size:10px;color:#626f86;text-transform:uppercase;margin-bottom:2px}
-    .print-kpi-val{font-size:20px;font-weight:700}
-    .print-footer{margin-top:16px;padding-top:8px;border-top:1px solid #dde1e7;font-size:10px;color:#888;display:flex;justify-content:space-between}
-    @media print{body{margin:0}@page{margin:15mm}}
-  </style></head><body>${doc}
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fiche Inventaire</title>
+  <style>${FICHE_CSS}</style></head><body>${doc}
   <script>window.onload=function(){window.print();}<\/script>
   </body></html>`);
   win.document.close();
 }
 
 function exportEtatExcel(){
-  const type=document.getElementById('etatType').value;
-  const comment=document.getElementById('etatComment').value.trim();
   const data=getFilteredItems().map(i=>({...i,catGlobale:getCatGlobale(i.categorie)}));
-  const typeLabels={categorie:'Par catégorie',modele:'Par marque/modèle',affectation:'Par département',statut:'Par statut',etat:'Par état',all:'Liste complète'};
+  const dept=document.getElementById('etatFDept').value||'Tous';
+  const ben=document.getElementById('etatFBen').value||'Tous';
+  const now=new Date().toISOString().slice(0,10);
   const wb=XLSX.utils.book_new();
-  const HDR=['N° Inventaire','Catégorie globale','Catégorie','Désignation','Modèle','N° Série','Nombre','Affectation','Bénéficiaire','État','Statut','Année'];
-  const KEYS=['numInv','catGlobale','categorie','nom','modele','serie','nb','affectation','beneficiaire','etat','statut','annee'];
-  // catGlobale calculée dans data déjà
 
-  if(type==='all'){
-    const rows=[HDR].concat(data.map(i=>KEYS.map(k=>i[k]||'')));
-    if(comment)rows.unshift(['Observations : '+comment]);
-    const ws=XLSX.utils.aoa_to_sheet(rows);
-    ws['!cols']=KEYS.map(()=>({wch:16}));
-    XLSX.utils.book_append_sheet(wb,ws,'Liste complète');
-  } else {
-    const grouped={};
-    data.forEach(i=>{const k=i[type]||'Non défini';if(!grouped[k])grouped[k]=[];grouped[k].push(i);});
-    Object.entries(grouped).sort((a,b)=>a[0].localeCompare(b[0],'fr')).forEach(([grp,rows])=>{
-      const aoa=[HDR].concat(rows.map(i=>KEYS.map(k=>i[k]||'')));
-      const sheetName=grp.substring(0,28).replace(/[\/*?:[\]]/g,'');
-      const ws=XLSX.utils.aoa_to_sheet(aoa);
-      ws['!cols']=KEYS.map(()=>({wch:16}));
-      XLSX.utils.book_append_sheet(wb,ws,sheetName||'Groupe');
-    });
-    // Onglet résumé
-    const sumHDR=[typeLabels[type],'Total articles','Fonctionnels','En panne/HS'];
-    const sumRows=Object.entries(grouped).map(([k,v])=>[k,v.length,
-      v.filter(i=>i.etat==='Fonctionnel').length,
-      v.filter(i=>i.etat==='En panne'||i.etat==='Hors service').length
-    ]);
-    const sumWs=XLSX.utils.aoa_to_sheet([sumHDR,...sumRows]);
-    sumWs['!cols']=[{wch:22},{wch:14},{wch:14},{wch:14}];
-    XLSX.utils.book_append_sheet(wb,sumWs,'Résumé');
-  }
-  const fname='Etat_'+type+'_'+new Date().toISOString().slice(0,10)+'.xlsx';
-  XLSX.writeFile(wb,fname);
+  // Grouper par catégorie globale
+  const grouped={};
+  data.forEach(i=>{const cg=i.catGlobale||'Non classé';if(!grouped[cg])grouped[cg]=[];grouped[cg].push(i);});
+
+  const isInfoElec=cg=>cg.toLowerCase().includes('informatique')||cg.toLowerCase().includes('électronique')||cg.toLowerCase().includes('electronique');
+
+  // Un onglet par catégorie globale
+  Object.entries(grouped).sort((a,b)=>a[0].localeCompare(b[0],'fr')).forEach(([cg,rows])=>{
+    const infoElec=isInfoElec(cg);
+    const hdr=infoElec
+      ?['Désignation','Modèle','N° Série','N° Inventaire','Année']
+      :['Désignation','Marque','Nombre','N° Série','N° Inventaire','Année'];
+    const aoa=[
+      [`FICHE D'INVENTAIRE`],
+      [`Affectation : ${dept}`],
+      [`Bureau/Local : ${ben}`],
+      [],
+      [`${cg}`],
+      hdr,
+      ...rows.map(i=>infoElec
+        ?[i.nom||'',i.modele||'',i.serie||'',i.numInv||'',i.annee||'']
+        :[i.nom||'',i.modele||'',i.nb||1,i.serie||'',i.numInv||'',i.annee||'']
+      )
+    ];
+    const ws=XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols']=infoElec?[22,26,22,14,8].map(w=>({wch:w})):[22,22,8,22,14,8].map(w=>({wch:w}));
+    const sheetName=cg.substring(0,28).replace(/[\/*?:[\]]/g,'');
+    XLSX.utils.book_append_sheet(wb,ws,sheetName||'Groupe');
+  });
+
+  // Onglet récapitulatif
+  const recapHDR=['Catégorie globale','Catégorie','Désignation','Modèle','N° Série','Nombre','N° Inventaire','Affectation','Bénéficiaire','État','Statut','Année'];
+  const recapRows=data.map(i=>[i.catGlobale||'',i.categorie||'',i.nom||'',i.modele||'',i.serie||'',i.nb||1,i.numInv||'',i.affectation||'',i.beneficiaire||'',i.etat||'',i.statut||'',i.annee||'']);
+  const wsRecap=XLSX.utils.aoa_to_sheet([recapHDR,...recapRows]);
+  wsRecap['!cols']=recapHDR.map(()=>({wch:16}));
+  XLSX.utils.book_append_sheet(wb,wsRecap,'Récapitulatif');
+
+  XLSX.writeFile(wb,`Fiche_Inventaire_${dept}_${now}.xlsx`);
 }
-</script>
 
-
-<script>
 /* ═══════════════════════════════════════
    SAUVEGARDE / CHARGEMENT JSON
 ═══════════════════════════════════════ */
