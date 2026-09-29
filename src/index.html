@@ -1393,14 +1393,14 @@ function buildCumulSection(grouped, isInfoElec){
           <th style="width:25%">Désignation</th>
           <th style="width:26%">Modèle</th>
           <th style="width:8%">Nombre</th>
-          <th style="width:27%">Bénéficiaire</th>
+          <th style="width:27%">Affectation</th>
           <th style="width:14%">N° Inventaire</th>
         </tr></thead>
         <tbody>${sorted.map(r=>`<tr>
           <td>${r.nom}</td>
           <td>${r.modele||''}</td>
           <td style="text-align:center">${r.nombre}</td>
-          <td>${r.beneficiaires.join(' + ')||r.affectations.join(' + ')}</td>
+          <td>${r.affectations.join(' + ')}</td>
           <td style="text-align:center">${r.numInvs.join(', ')}</td>
         </tr>`).join('')}</tbody>
       </table>`;
@@ -1485,8 +1485,8 @@ function exportCumulExcel(){
         allRows.push(['Désignation','Modèle','Nombre','Affectation','N° Inventaire']);
         sorted.forEach(r=>allRows.push([r.nom,r.modele||'',r.nombre,r.affectations.join(' + '),r.numInvs.join(', ')]));
       } else {
-        allRows.push(['Désignation','Modèle','Nombre','Bénéficiaire','N° Inventaire']);
-        sorted.forEach(r=>allRows.push([r.nom,r.modele||'',r.nombre,r.beneficiaires.join(' + ')||r.affectations.join(' + '),r.numInvs.join(', ')]));
+        allRows.push(['Désignation','Modèle','Nombre','Affectation','N° Inventaire']);
+        sorted.forEach(r=>allRows.push([r.nom,r.modele||'',r.nombre,r.affectations.join(' + '),r.numInvs.join(', ')]));
       }
       allRows.push([]);
     });
