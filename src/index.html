@@ -1411,7 +1411,11 @@ function buildCumulDoc(){
     // Une seule année sélectionnée
     const grouped=buildCumulData(data);
     const sections=buildCumulSection(grouped,isInfoElec);
-    body=`<div class="cumul-titre">Inventaire cumulé pour l'année ${anneeFilter}الجرد التراكمي لسنة</div>${sections}`;
+   body = `<div class="cumul-titre">${anneeFilter} الجرد التراكمي لسنة <br>Inventaire cumulé pour l'année ${anneeFilter}</div>${sections}`;
+   /*
+   body=`<div class="cumul-titre">${anneeFilter}الجرد التراكمي لسنة</div>${sections}`;
+   body=`<div class="cumul-titre">Inventaire cumulé pour l'année ${anneeFilter}</div>${sections}`;
+   /*
   } else {
     // Toutes les années — un bloc par année trié croissant
     const annees=[...new Set(data.map(i=>String(i.annee||'Sans année')))].sort();
