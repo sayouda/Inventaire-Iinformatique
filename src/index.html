@@ -1089,6 +1089,7 @@ function buildFicheDoc(){
 
   return `<div class="fiche">
     <div class="fiche-titre">FICHE D'INVENTAIRE</div>
+    <div class="fiche-titre">بطاقة جرد</div>
     <div class="fiche-info">
       <b>Affectation :</b> ${dept}<br>
       <b>Bureau/Local :</b> ${ben}
@@ -1310,44 +1311,34 @@ function getCumulData(){
 }
 
 function buildCumulData(data){
-  // Extraire le nombre depuis numInv (ex: 1452/8 → 8) ou utiliser champ nb
-  const getNb=i=>{
-    if(i.numInv&&i.numInv.includes('/')){
-      const parts=i.numInv.split('/');
-      const n=parseInt(parts[parts.length-1]);
-      if(!isNaN(n)&&n>0) return n;
-    }
-    return parseInt(i.nb)||1;
-  };
-
-  // Grouper par catégorie puis par désignation+modèle (même article)
+  // Regrouper par catégorie + même N° inventaire exact
+  // → une ligne par N° inventaire avec cumul des affectations
   const grouped={};
   data.forEach(i=>{
     const cat=i.categorie||'Non défini';
     if(!grouped[cat]) grouped[cat]=[];
-    // Chercher si article similaire existe déjà (même désignation + même modèle)
-    const key=`${(i.nom||'').trim().toLowerCase()}||${(i.modele||'').trim().toLowerCase()}`;
-    const existing=grouped[cat].find(x=>x._key===key);
+    const numInv=(i.numInv||'').trim();
+    // Nombre = chiffre après le / dans numInv (ex: 1627/3 → 3)
+    let nombre=1;
+    if(numInv.includes('/')){
+      const n=parseInt(numInv.split('/').pop());
+      if(!isNaN(n)&&n>0) nombre=n;
+    }
+    // Chercher si même N° inventaire existe déjà dans cette catégorie
+    const existing=grouped[cat].find(x=>x.numInv===numInv && numInv!=='');
     if(existing){
-      existing.nombre+=getNb(i);
       // Ajouter affectation si pas déjà présente
       const aff=(i.affectation||'').trim();
       if(aff && !existing.affectations.includes(aff)) existing.affectations.push(aff);
-      const ben=(i.beneficiaire||'').trim();
-      if(ben && !existing.beneficiaires.includes(ben)) existing.beneficiaires.push(ben);
-      // Garder tous les N° inventaire
-      if(i.numInv && !existing.numInvs.includes(i.numInv)) existing.numInvs.push(i.numInv);
     } else {
       grouped[cat].push({
-        _key:key,
-        nom:i.nom||'',
-        modele:i.modele||'',
-        nombre:getNb(i),
+        nom:         i.nom||'',
+        modele:      i.modele||'',
+        nombre:      nombre,
         affectations:[(i.affectation||'').trim()].filter(Boolean),
-        beneficiaires:[(i.beneficiaire||'').trim()].filter(Boolean),
-        numInvs:[i.numInv||''].filter(Boolean),
-        categorie:cat,
-        catGlobale:getCatGlobale(cat)
+        numInv:      numInv,
+        categorie:   cat,
+        catGlobale:  getCatGlobale(cat)
       });
     }
   });
@@ -1357,8 +1348,8 @@ function buildCumulData(data){
 function sortNumInv(a,b){
   // Tri croissant sur N° inventaire (ex: 1452/8 → tri sur 1452 puis 8)
   const parse=s=>{const p=(s||'').split('/');return[parseInt(p[0])||0,parseInt(p[1])||0];};
-  const [an,ab]=parse(a.numInvs[0]);
-  const [bn,bb]=parse(b.numInvs[0]);
+  const [an,ab]=parse(a.numInv);
+  const [bn,bb]=parse(b.numInv);
   return an!==bn?an-bn:ab-bb;
 }
 
@@ -1384,7 +1375,7 @@ function buildCumulSection(grouped, isInfoElec){
           <td>${r.modele||''}</td>
           <td style="text-align:center">${r.nombre}</td>
           <td>${r.affectations.join(' + ')}</td>
-          <td style="text-align:center">${r.numInvs.join(', ')}</td>
+          <td style="text-align:center">${r.numInv||''}</td>
         </tr>`).join('')}</tbody>
       </table>`;
     } else {
@@ -1401,7 +1392,7 @@ function buildCumulSection(grouped, isInfoElec){
           <td>${r.modele||''}</td>
           <td style="text-align:center">${r.nombre}</td>
           <td>${r.affectations.join(' + ')}</td>
-          <td style="text-align:center">${r.numInvs.join(', ')}</td>
+          <td style="text-align:center">${r.numInv||''}</td>
         </tr>`).join('')}</tbody>
       </table>`;
     }
@@ -1421,7 +1412,7 @@ function buildCumulDoc(){
     // Une seule année sélectionnée
     const grouped=buildCumulData(data);
     const sections=buildCumulSection(grouped,isInfoElec);
-    body=`<div class="cumul-titre">Inventaire cumulé année ${anneeFilter}</div>${sections}`;
+    body=`<div class="cumul-titre">Inventaire cumulé année ${anneeFilter}-الجرد التراكمي لسنة</div>${sections}`;
   } else {
     // Toutes les années — un bloc par année trié croissant
     const annees=[...new Set(data.map(i=>String(i.annee||'Sans année')))].sort();
@@ -1483,10 +1474,10 @@ function exportCumulExcel(){
       allRows.push([cat]);
       if(infoElec){
         allRows.push(['Désignation','Modèle','Nombre','Affectation','N° Inventaire']);
-        sorted.forEach(r=>allRows.push([r.nom,r.modele||'',r.nombre,r.affectations.join(' + '),r.numInvs.join(', ')]));
+        sorted.forEach(r=>allRows.push([r.nom,r.modele||'',r.nombre,r.affectations.join(' + '),r.numInv||'']));
       } else {
         allRows.push(['Désignation','Modèle','Nombre','Affectation','N° Inventaire']);
-        sorted.forEach(r=>allRows.push([r.nom,r.modele||'',r.nombre,r.affectations.join(' + '),r.numInvs.join(', ')]));
+        sorted.forEach(r=>allRows.push([r.nom,r.modele||'',r.nombre,r.affectations.join(' + '),r.numInv||'']));
       }
       allRows.push([]);
     });
