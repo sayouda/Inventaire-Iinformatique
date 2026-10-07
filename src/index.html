@@ -1053,7 +1053,7 @@ function getFilteredItems(){
 const FICHE_CSS=`
   body{font-family:'Times New Roman',serif;font-size:12px;color:#000;margin:0;padding:0}
   .fiche{padding:20px 28px;max-width:800px;margin:0 auto}
-  .fiche-titre{text-align:center;font-size:17px;font-weight:bold;text-decoration:underline;margin-bottom:16px;letter-spacing:1px}
+  .fiche-titre{text-align:center;font-size:15px;font-weight:bold;text-decoration:none;margin-bottom:16px;letter-spacing:1px}
   .fiche-info{margin-bottom:14px;font-size:12px;line-height:2}
   .fiche-info b{text-transform:uppercase}
   .section-titre{background:#000;color:#fff;text-align:center;font-weight:bold;font-size:13px;padding:6px 10px;margin-top:18px}
@@ -1143,7 +1143,7 @@ function buildFicheDoc(){
   const hasArabic=ar_dept||ar_ben;
 
   return `<div class="fiche">
-    <div class="fiche-titre">بطاقة جرد <br> FICHE D'INVENTAIRE</div>
+    <div class="fiche-titre">****** FICHE D'INVENTAIRE *** بطاقة جرد ******</div>
 <div class="bilingual-header">
 	<div class="bilingual-row">
 		<div class="fr" style="display: flex; justify-content: space-between; direction: ltr;">
