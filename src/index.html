@@ -212,6 +212,8 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--muted)}
     <button class="btn btn-save" onclick="saveJSON()" title="Sauvegarder les données">💾 Sauvegarder</button>
     <button class="btn btn-load" onclick="document.getElementById('jsonInput').click()" title="Charger un fichier de données">📂 Charger</button>
     <input type="file" id="jsonInput" accept=".json" style="display:none" onchange="loadJSON(this.files[0])"/>
+    <input type="file" id="refFrArInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="loadRefFrAr(this.files[0])"/>
+    <button class="btn" style="color:#5e4c00;border-color:#c8a200;background:#fff8e1" onclick="document.getElementById('refFrArInput').click()" title="Charger le fichier de traduction FR/AR">🌐 Réf. FR/AR</button>
   </div>
 
   <div id="batchBar" class="batch-bar" style="display:none">
@@ -359,6 +361,44 @@ let REF = {
 /* ═══════════════════════════════════════
    DONNÉES
 ═══════════════════════════════════════ */
+// ── Table de référence FR → AR ──
+let REF_FR_AR = {
+  affectation: {},
+  beneficiaire: {}
+};
+
+function loadRefFrAr(file){
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const wb=XLSX.read(e.target.result,{type:'binary'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const raw=XLSX.utils.sheet_to_json(ws,{defval:''});
+      REF_FR_AR.affectation={};
+      REF_FR_AR.beneficiaire={};
+      raw.forEach(row=>{
+        const fr_aff=String(row['Affectation']||row['affectation']||'').trim();
+        const fr_ben=String(row['Bénéficiaire']||row['Beneficiaire']||row['bénéficiaire']||'').trim();
+        const ar_aff=String(row['الهيكل المستفيد']||'').trim();
+        const ar_ben=String(row['القسم']||'').trim();
+        if(fr_aff && ar_aff) REF_FR_AR.affectation[fr_aff]=ar_aff;
+        if(fr_ben && ar_ben) REF_FR_AR.beneficiaire[fr_ben]=ar_ben;
+      });
+      const nbAff=Object.keys(REF_FR_AR.affectation).length;
+      const nbBen=Object.keys(REF_FR_AR.beneficiaire).length;
+      showToast('🌐 Réf. FR/AR chargée : '+nbAff+' affectations, '+nbBen+' bénéficiaires');
+    }catch(err){
+      alert('Erreur lecture Réf. FR/AR : '+err.message);
+    }
+  };
+  reader.readAsBinaryString(file);
+  document.getElementById('refFrArInput').value='';
+}
+
+function trAff(fr){ return REF_FR_AR.affectation[(fr||'').trim()]||''; }
+function trBen(fr){ return REF_FR_AR.beneficiaire[(fr||'').trim()]||''; }
+
 let items = [
   {id:1,numInv:"211/1",categorie:"Matériel Audio Visuel",nom:"Caméra",modele:"Panasonic",serie:"F398175000042",nb:1,affectation:"Magasin",beneficiaire:"John",etat:"Fonctionnel",statut:"Hors service",obs:""}
 ];
@@ -1013,7 +1053,7 @@ function getFilteredItems(){
 const FICHE_CSS=`
   body{font-family:'Times New Roman',serif;font-size:12px;color:#000;margin:0;padding:0}
   .fiche{padding:20px 28px;max-width:800px;margin:0 auto}
-  .fiche-titre{text-align:center;font-size:17px;font-weight:bold;text-decoration:none;margin-bottom:16px;letter-spacing:1px}
+  .fiche-titre{text-align:center;font-size:17px;font-weight:bold;text-decoration:underline;margin-bottom:16px;letter-spacing:1px}
   .fiche-info{margin-bottom:14px;font-size:12px;line-height:2}
   .fiche-info b{text-transform:uppercase}
   .section-titre{background:#000;color:#fff;text-align:center;font-weight:bold;font-size:13px;padding:6px 10px;margin-top:18px}
@@ -1022,7 +1062,7 @@ const FICHE_CSS=`
   .fiche-table td{border:1px solid #000;padding:5px 8px;font-size:11px}
   .fiche-table tr:nth-child(even) td{background:#f5f5f5}
   .fiche-footer{margin-top:20px;padding-top:8px;border-top:1px solid #000;font-size:10px;color:#555;display:flex;justify-content:space-between}
-  @media print{body{margin:0}@page{margin:12mm 15mm}}
+  @media print{body{margin:0}@page{margin:6mm 8mm;size:A4;margin-header:0;margin-footer:0}}
 `;
 
 function buildFicheDoc(){
@@ -1052,20 +1092,23 @@ function buildFicheDoc(){
         <thead>
           <tr><th colspan="5" class="cat-header">${cg}</th></tr>
           <tr>
-            <th style="width:22%">Désignation</th>
-            <th style="width:28%">Modèle</th>
-            <th style="width:25%">N° Série</th>
-            <th style="width:14%">N° Inventaire</th>
-            <th style="width:11%">Année</th>
+            <th style="width:22%">Désignation <br> الصنف</th>
+            <th style="width:26%">Modèle <br> النوع</th>
+            <th style="width:8%">Nombre <br> العدد</th>
+            <th style="width:20%">N°Série <br> رقم التسلسل</th>
+            <th style="width:13%">N°Inventaire <br> رقم الجرد</th>
+            <th style="width:11%">Année <br> السنة</th>
           </tr>
         </thead>
-        <tbody>${rows.map(i=>`<tr>
+        <tbody>${rows.map(i=>{
+          const ar_aff=trAff(i.affectation||'');
+          return `<tr>
           <td>${i.nom||''}</td>
           <td>${i.modele||''}</td>
           <td>${i.serie||''}</td>
           <td>${i.numInv||''}</td>
           <td style="text-align:center">${i.annee||''}</td>
-        </tr>`).join('')}</tbody>
+        </tr>`;}).join('')}</tbody>
       </table>`;
     } else {
       sections+=`<table class="fiche-table" style="margin-top:4px">
@@ -1073,35 +1116,52 @@ function buildFicheDoc(){
           <tr><th colspan="6" class="cat-header">${cg}</th></tr>
           <tr>
             <th style="width:22%">Désignation <br> الصنف</th>
-            <th style="width:26%">Marque <br> النوع</th>
+            <th style="width:26%">Modèle <br> النوع</th>
             <th style="width:8%">Nombre <br> العدد</th>
             <th style="width:20%">N°Série <br> رقم التسلسل</th>
-            <th style="width:13%">N°Inventaire - رقم الجرد</th>
+            <th style="width:13%">N°Inventaire <br> رقم الجرد</th>
             <th style="width:11%">Année <br> السنة</th>
           </tr>
         </thead>
-        <tbody>${rows.map(i=>`<tr>
+        <tbody>${rows.map(i=>{
+          const ar_aff=trAff(i.affectation||'');
+          return `<tr>
           <td>${i.nom||''}</td>
           <td>${i.modele||''}</td>
           <td style="text-align:center">${i.nb||1}</td>
           <td>${i.serie||''}</td>
           <td>${i.numInv||''}</td>
           <td style="text-align:center">${i.annee||''}</td>
-        </tr>`).join('')}</tbody>
+        </tr>`;}).join('')}</tbody>
       </table>`;
     }
   });
 
+  // Traductions en-tête
+  const ar_dept=trAff(dept)||'';
+  const ar_ben=trBen(ben)||'';
+  const hasArabic=ar_dept||ar_ben;
+
   return `<div class="fiche">
     <div class="fiche-titre">بطاقة جرد <br> FICHE D'INVENTAIRE</div>
-    <div class="fiche-info">
-      <b>Affectation :</b> ${dept}<br>
-      <b>Bureau/Local :</b> ${ben}
-    </div>
-    ${sections}
-    <div class="fiche-footer"><span>Inventaire Matériel v2.0</span><span>Édité le ${now}</span></div>
+<div class="bilingual-header">
+	<div class="bilingual-row">
+		<div class="fr" style="display: flex; justify-content: space-between; direction: ltr;">
+    <span>AFFECTATION : ${dept}</span>
+    <span style="direction: rtl;">  الهيكل المستفيد: ${ar_dept}</span>
+		</div>
+	</div>
+    <div class="bilingual-row">
+        <div class="fr" style="display: flex; justify-content: space-between; direction: ltr;">
+    <span>BUREAU/LOCAL : ${ben}</span>
+    <span style="direction: rtl;">  القسم: ${ar_ben}</span>
+		</div>
+	</div>
+</div>
+     ${sections}
+
   </div>`;
-}
+  }
 
 function previewEtat(){
   const doc=buildFicheDoc();
@@ -1119,14 +1179,15 @@ function printEtat(){
 
 function exportEtatPDF(){
   const doc=buildFicheDoc();
+  const dept=document.getElementById('etatFDept').value||'Tous';
+  const now=new Date().toISOString().slice(0,10);
+  const titre='Fiche_Inventaire_'+dept+'_'+now;
   const win=window.open('','_blank','width=900,height=700');
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fiche Inventaire</title>
-  <style>${FICHE_CSS}</style></head><body>${doc}
-  <script>window.onload=function(){window.print();}<\/script>
-  </body></html>`);
+  win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+titre+'</title><style>'+FICHE_CSS+'</style></head><body>'+doc+'</body></html>');
   win.document.close();
+  win.document.title=titre;
+  setTimeout(function(){win.print();},600);
 }
-
 function exportEtatExcel(){
   const data=getFilteredItems().map(i=>({...i,catGlobale:getCatGlobale(i.categorie)}));
   const dept=document.getElementById('etatFDept').value||'Tous';
@@ -1286,7 +1347,7 @@ const CUMUL_CSS=`
   .cumul-table tr:nth-child(even) td{background:#f5f5f5}
   .cat-header{background:#000;color:#fff;text-align:center;font-weight:bold;font-size:11px;padding:3px 6px;border:1px solid #000}
   .cumul-footer{margin-top:8px;padding-top:4px;border-top:1px solid #000;font-size:9px;color:#555;display:flex;justify-content:space-between}
-  @media print{body{margin:0}@page{margin:8mm 10mm;size:A4}}
+  @media print{body{margin:0}@page{margin:6mm 8mm;size:A4;margin-header:0;margin-footer:0}}
 `;
 
 function openCumul(){
@@ -1370,17 +1431,17 @@ function buildCumulSection(grouped, isInfoElec){
         <thead>
           <tr><th colspan="5" class="cat-header">${cat}</th></tr>
           <tr>
-            <th style="width:18%">Désignation <br> الصنف</th>
-            <th style="width:20%">Modèle <br> النوع</th>
-            <th style="width:7%">Nombre <br> العدد</th>
-            <th style="width:38%">Affectation <br> الهيكل المستفيد</th>
-            <th style="width:17%">N° Inventaire <br> رقم الجرد</th>
+            <th style="width:25%">Désignation <br> الصنف</th>
+            <th style="width:28%">Modèle <br> النوع</th>
+			<th style="width:8%">Nombre <br> العدد</th>
+			<th style="width:25%">Affectation <br> الهيكل المستفيد</th>
+			<th style="width:14%">N° Inventaire <br> رقم الجرد</th>
           </tr>
         </thead>
         <tbody>${sorted.map(r=>`<tr>
           <td>${r.nom}</td>
           <td>${r.modele||''}</td>
-          <td style="text-align:left">${r.nombre}</td>
+          <td style="text-align:center">${r.nombre}</td>
           <td>${r.affectations.join(' + ')}</td>
           <td>${r.numInv||''}</td>
         </tr>`).join('')}</tbody>
@@ -1390,17 +1451,17 @@ function buildCumulSection(grouped, isInfoElec){
         <thead>
           <tr><th colspan="5" class="cat-header">${cat}</th></tr>
           <tr>
-            <th style="width:18%">Désignation <br> الصنف</th>
-            <th style="width:18%">Modèle <br> النوع</th>
-            <th style="width:7%">Nombre <br> العدد</th>
-            <th style="width:38%">Affectation <br> الهيكل المستفيد</th>
-            <th style="width:17%">N° Inventaire <br> رقم الجرد</th>
+            <th style="width:25%">Désignation <br> الصنف</th>
+			<th style="width:28%">Modèle <br> النوع</th>
+			<th style="width:8%">Nombre <br> العدد</th>
+			<th style="width:25%">Affectation <br> الهيكل المستفيد</th>
+			<th style="width:14%">N° Inventaire <br> رقم الجرد</th>
           </tr>
         </thead>
         <tbody>${sorted.map(r=>`<tr>
           <td>${r.nom}</td>
           <td>${r.modele||''}</td>
-          <td style="text-align:left">${r.nombre}</td>
+          <td style="text-align:center">${r.nombre}</td>
           <td>${r.affectations.join(' + ')}</td>
           <td>${r.numInv||''}</td>
         </tr>`).join('')}</tbody>
@@ -1422,7 +1483,7 @@ function buildCumulDoc(){
     // Une seule année sélectionnée
     const grouped=buildCumulData(data);
     const sections=buildCumulSection(grouped,isInfoElec);
-    body = `<div class="cumul-titre">${anneeFilter} الجرد التراكمي لسنة <br>Inventaire cumulé pour l'année ${anneeFilter}</div>${sections}`;
+      body = `<div class="cumul-titre">   ******   Inventaire cumulé pour l'année    ${anneeFilter}   الجرد التراكمي لسنة   ****** </div>${sections}`;
   } else {
     // Toutes les années — un bloc par année trié croissant
     const annees=[...new Set(data.map(i=>String(i.annee||'Sans année')))].sort();
@@ -1435,8 +1496,8 @@ function buildCumulDoc(){
   }
 
   return `<div class="cumul">
-    ${body}
-    <div class="cumul-footer"><span>Inventaire Matériel v2.0</span><span>Édité le ${now}</span></div>
+   ${body}
+    
   </div>`;
 }
 
@@ -1456,12 +1517,14 @@ function printCumul(){
 
 function exportCumulPDF(){
   const doc=buildCumulDoc();
+  const annee=document.getElementById('cumulAnnee').value||'Tout';
+  const now=new Date().toISOString().slice(0,10);
+  const titre='Inventaire_Cumule_'+annee+'_'+now;
   const win=window.open('','_blank','width=900,height=700');
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Inventaire Cumulé</title>
-  <style>${CUMUL_CSS}</style></head><body>${doc}
-  <script>window.onload=function(){window.print();}<\/script>
-  </body></html>`);
+  win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+titre+'</title><style>'+CUMUL_CSS+'</style></head><body>'+doc+'</body></html>');
   win.document.close();
+  win.document.title=titre;
+  setTimeout(function(){win.print();},600);
 }
 
 function exportCumulExcel(){
