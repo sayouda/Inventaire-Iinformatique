@@ -1053,7 +1053,7 @@ function getFilteredItems(){
 const FICHE_CSS=`
   body{font-family:'Times New Roman',serif;font-size:12px;color:#000;margin:0;padding:0}
   .fiche{padding:20px 28px;max-width:800px;margin:0 auto}
-  .fiche-titre{text-align:center;font-size:15px;font-weight:bold;text-decoration:none;margin-bottom:16px;letter-spacing:1px}
+  .fiche-titre{text-align:center;font-size:17px;font-weight:bold;text-decoration:none;margin-bottom:16px;letter-spacing:1px}
   .fiche-info{margin-bottom:14px;font-size:12px;line-height:2}
   .fiche-info b{text-transform:uppercase}
   .section-titre{background:#000;color:#fff;text-align:center;font-weight:bold;font-size:13px;padding:6px 10px;margin-top:18px}
@@ -1061,8 +1061,8 @@ const FICHE_CSS=`
   .fiche-table th{border:1px solid #000;padding:5px 8px;background:#e8e8e8;font-weight:bold;font-size:11px;text-align:center}
   .fiche-table td{border:1px solid #000;padding:5px 8px;font-size:11px}
   .fiche-table tr:nth-child(even) td{background:#f5f5f5}
-  .fiche-footer{margin-top:20px;padding-top:8px;border-top:1px solid #000;font-size:10px;color:#555;display:flex;justify-content:space-between}
-  @media print{body{margin:0}@page{margin:6mm 8mm;size:A4;margin-header:0;margin-footer:0}}
+  .fiche-footer{margin-top:20px;padding-top:8px;border-top:1px solid #000;font-size:10px;color:#555;display:none;justify-content:space-between}
+  @media print{body{margin:0}@page{margin:12mm 15mm}}
 `;
 
 function buildFicheDoc(){
@@ -1090,14 +1090,14 @@ function buildFicheDoc(){
     if(infoElec){
       sections+=`<table class="fiche-table" style="margin-top:4px">
         <thead>
-          <tr><th colspan="5" class="cat-header">${cg}</th></tr>
+          <tr><th colspan="6" class="cat-header">${cg}</th></tr>
           <tr>
-            <th style="width:22%">Désignation <br> الصنف</th>
-            <th style="width:26%">Modèle <br> النوع</th>
-            <th style="width:8%">Nombre <br> العدد</th>
-            <th style="width:20%">N°Série <br> رقم التسلسل</th>
-            <th style="width:13%">N°Inventaire <br> رقم الجرد</th>
-            <th style="width:11%">Année <br> السنة</th>
+            <th style="width:22%">Désignation</th>
+            <th style="width:24%">Modèle</th>
+            <th style="width:20%">N° Série</th>
+            <th style="width:7%">Nombre</th>
+            <th style="width:16%">N° Inventaire</th>
+            <th style="width:11%">Année</th>
           </tr>
         </thead>
         <tbody>${rows.map(i=>{
@@ -1106,6 +1106,7 @@ function buildFicheDoc(){
           <td>${i.nom||''}</td>
           <td>${i.modele||''}</td>
           <td>${i.serie||''}</td>
+          <td style="text-align:center">${i.nb||1}</td>
           <td>${i.numInv||''}</td>
           <td style="text-align:center">${i.annee||''}</td>
         </tr>`;}).join('')}</tbody>
@@ -1117,10 +1118,10 @@ function buildFicheDoc(){
           <tr>
             <th style="width:22%">Désignation <br> الصنف</th>
             <th style="width:26%">Modèle <br> النوع</th>
-            <th style="width:8%">Nombre <br> العدد</th>
             <th style="width:20%">N°Série <br> رقم التسلسل</th>
+            <th style="width:8%">Nombre <br> العدد</th>
             <th style="width:13%">N°Inventaire <br> رقم الجرد</th>
-            <th style="width:11%">Année <br> السنة</th>
+            <th style="width:11%">Année</th>
           </tr>
         </thead>
         <tbody>${rows.map(i=>{
@@ -1128,8 +1129,8 @@ function buildFicheDoc(){
           return `<tr>
           <td>${i.nom||''}</td>
           <td>${i.modele||''}</td>
-          <td style="text-align:center">${i.nb||1}</td>
           <td>${i.serie||''}</td>
+          <td style="text-align:center">${i.nb||1}</td>
           <td>${i.numInv||''}</td>
           <td style="text-align:center">${i.annee||''}</td>
         </tr>`;}).join('')}</tbody>
@@ -1188,6 +1189,7 @@ function exportEtatPDF(){
   win.document.title=titre;
   setTimeout(function(){win.print();},600);
 }
+
 function exportEtatExcel(){
   const data=getFilteredItems().map(i=>({...i,catGlobale:getCatGlobale(i.categorie)}));
   const dept=document.getElementById('etatFDept').value||'Tous';
@@ -1205,8 +1207,8 @@ function exportEtatExcel(){
   Object.entries(grouped).sort((a,b)=>a[0].localeCompare(b[0],'fr')).forEach(([cg,rows])=>{
     const infoElec=isInfoElec(cg);
     const hdr=infoElec
-      ?['Désignation','Modèle','N° Série','N° Inventaire','Année']
-      :['Désignation','Marque','Nombre','N° Série','N° Inventaire','Année'];
+      ?['Désignation','Modèle','N° Série','Nombre','N° Inventaire','Année']
+      :['Désignation','Modèle','N° Série','Nombre','N° Inventaire','Année'];
     const aoa=[
       [`FICHE D'INVENTAIRE`],
       [`Affectation : ${dept}`],
@@ -1215,12 +1217,12 @@ function exportEtatExcel(){
       [`${cg}`],
       hdr,
       ...rows.map(i=>infoElec
-        ?[i.nom||'',i.modele||'',i.serie||'',i.numInv||'',i.annee||'']
-        :[i.nom||'',i.modele||'',i.nb||1,i.serie||'',i.numInv||'',i.annee||'']
+        ?[i.nom||'',i.modele||'',i.serie||'',i.nb||1,i.numInv||'',i.annee||'']
+        :[i.nom||'',i.modele||'',i.serie||'',i.nb||1,i.numInv||'',i.annee||'']
       )
     ];
     const ws=XLSX.utils.aoa_to_sheet(aoa);
-    ws['!cols']=infoElec?[22,26,22,14,8].map(w=>({wch:w})):[22,22,8,22,14,8].map(w=>({wch:w}));
+    ws['!cols']=[22,24,20,8,16,8].map(w=>({wch:w}));
     const sheetName=cg.substring(0,28).replace(/[\/*?:[\]]/g,'');
     XLSX.utils.book_append_sheet(wb,ws,sheetName||'Groupe');
   });
@@ -1346,8 +1348,8 @@ const CUMUL_CSS=`
   .cumul-table td{border:1px solid #000;padding:3px 6px;font-size:10px;vertical-align:top}
   .cumul-table tr:nth-child(even) td{background:#f5f5f5}
   .cat-header{background:#000;color:#fff;text-align:center;font-weight:bold;font-size:11px;padding:3px 6px;border:1px solid #000}
-  .cumul-footer{margin-top:8px;padding-top:4px;border-top:1px solid #000;font-size:9px;color:#555;display:flex;justify-content:space-between}
-  @media print{body{margin:0}@page{margin:6mm 8mm;size:A4;margin-header:0;margin-footer:0}}
+  .cumul-footer{margin-top:8px;padding-top:4px;border-top:1px solid #000;font-size:9px;color:#555;display:none;justify-content:space-between}
+  @media print{body{margin:0}@page{margin:8mm 10mm;size:A4}}
 `;
 
 function openCumul(){
@@ -1431,11 +1433,11 @@ function buildCumulSection(grouped, isInfoElec){
         <thead>
           <tr><th colspan="5" class="cat-header">${cat}</th></tr>
           <tr>
-            <th style="width:25%">Désignation <br> الصنف</th>
-            <th style="width:28%">Modèle <br> النوع</th>
-			<th style="width:8%">Nombre <br> العدد</th>
-			<th style="width:25%">Affectation <br> الهيكل المستفيد</th>
-			<th style="width:14%">N° Inventaire <br> رقم الجرد</th>
+            <th style="width:18%">Désignation <br> الصنف</th>
+            <th style="width:20%">Modèle <br> النوع</th>
+            <th style="width:7%">Nombre <br> العدد</th>
+            <th style="width:38%">Affectation <br> الهيكل المستفيد</th>
+            <th style="width:17%">N° Inventaire <br> رقم الجرد</th>
           </tr>
         </thead>
         <tbody>${sorted.map(r=>`<tr>
@@ -1451,11 +1453,11 @@ function buildCumulSection(grouped, isInfoElec){
         <thead>
           <tr><th colspan="5" class="cat-header">${cat}</th></tr>
           <tr>
-            <th style="width:25%">Désignation <br> الصنف</th>
-			<th style="width:28%">Modèle <br> النوع</th>
-			<th style="width:8%">Nombre <br> العدد</th>
-			<th style="width:25%">Affectation <br> الهيكل المستفيد</th>
-			<th style="width:14%">N° Inventaire <br> رقم الجرد</th>
+            <th style="width:18%">Désignation <br> الصنف</th>
+            <th style="width:18%">Modèle <br> النوع</th>
+            <th style="width:7%">Nombre <br> العدد</th>
+            <th style="width:38%">Affectation <br> الهيكل المستفيد</th>
+            <th style="width:17%">N° Inventaire <br> رقم الجرد</th>
           </tr>
         </thead>
         <tbody>${sorted.map(r=>`<tr>
@@ -1483,7 +1485,7 @@ function buildCumulDoc(){
     // Une seule année sélectionnée
     const grouped=buildCumulData(data);
     const sections=buildCumulSection(grouped,isInfoElec);
-      body = `<div class="cumul-titre">   ******   Inventaire cumulé pour l'année    ${anneeFilter}   الجرد التراكمي لسنة   ****** </div>${sections}`;
+    body = `<div class="cumul-titre">   ******   Inventaire cumulé pour l'année    ${anneeFilter}   الجرد التراكمي لسنة   ****** </div>${sections}`;
   } else {
     // Toutes les années — un bloc par année trié croissant
     const annees=[...new Set(data.map(i=>String(i.annee||'Sans année')))].sort();
@@ -1496,8 +1498,8 @@ function buildCumulDoc(){
   }
 
   return `<div class="cumul">
-   ${body}
-    
+    ${body}
+    <div class="cumul-footer"><span>Inventaire Matériel v2.0</span><span>Édité le ${now}</span></div>
   </div>`;
 }
 
