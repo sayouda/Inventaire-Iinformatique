@@ -1057,9 +1057,9 @@ const FICHE_CSS=`
   .fiche-info{margin-bottom:14px;font-size:12px;line-height:2}
   .fiche-info b{text-transform:uppercase}
   .section-titre{background:#000;color:#fff;text-align:center;font-weight:bold;font-size:13px;padding:6px 10px;margin-top:18px}
-  .fiche-table{width:100%;border-collapse:collapse;margin-top:0}
-  .fiche-table th{border:1px solid #000;padding:5px 8px;background:#e8e8e8;font-weight:bold;font-size:11px;text-align:center}
-  .fiche-table td{border:1px solid #000;padding:5px 8px;font-size:11px}
+  .fiche-table{width:100%;border-collapse:collapse;margin-top:0;table-layout:auto;}
+  .fiche-table th{border:1px solid #000;padding:5px 8px;background:#e8e8e8;font-weight:bold;font-size:10px;text-align:center}
+  .fiche-table td{border:1px solid #000;padding:5px 8px;font-size:8px}
   .fiche-table tr:nth-child(even) td{background:#f5f5f5}
   .fiche-footer{margin-top:20px;padding-top:8px;border-top:1px solid #000;font-size:10px;color:#555;display:none;justify-content:space-between}
   @media print{body{margin:0}@page{margin:12mm 15mm}}
@@ -1069,7 +1069,7 @@ function buildFicheDoc(){
   const data=getFilteredItems().map(i=>({...i,catGlobale:getCatGlobale(i.categorie)}));
   const now=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'});
   const dept=document.getElementById('etatFDept').value||'Tous les départements';
-  const ben=document.getElementById('etatFBen').value||'Tous';
+  const ben=document.getElementById('etatFBen').value||'Tous les locaux';
 
   // Grouper par catégorie globale
   const grouped={};
@@ -1088,51 +1088,51 @@ function buildFicheDoc(){
   Object.entries(grouped).sort((a,b)=>a[0].localeCompare(b[0],'fr')).forEach(([cg,rows])=>{
     const infoElec=isInfoElec(cg);
     if(infoElec){
-      sections+=`<table class="fiche-table" style="margin-top:4px">
+      sections+=`<table class="fiche-table">
         <thead>
-          <tr><th colspan="6" class="cat-header">${cg}</th></tr>
-          <tr>
-            <th style="width:22%">Désignation <br> الصنف</th>
-            <th style="width:24%">Modèle <br> النوع</th>
-            <th style="width:20%">N°Série <br> رقم التسلسل</th>
-            <th style="width:7%">Nombre <br> العدد</th>
-            <th style="width:16%">N°Inventaire <br> رقم الجرد</th>
-            <th style="width:11%">Année <br> السنة</th>
-          </tr>
-        </thead>
+		<tr><th colspan="6" class="cat-header">${cg}</th></tr>
+		<tr>
+            <th style="width:21%">Désignation <br> الصنف</th>
+            <th style="width:23%">Modèle <br> النوع</th>
+            <th style="width:27%">N°Série <br> رقم التسلسل</th>
+            <th style="width:5%">Nombre <br> العدد</th>
+            <th style="width:15%">N°Inventaire <br> رقم الجرد</th>
+            <th style="width:9%">Année <br> السنة</th>
+        </tr>
+		</thead>
         <tbody>${rows.map(i=>{
           const ar_aff=trAff(i.affectation||'');
           return `<tr>
           <td>${i.nom||''}</td>
           <td>${i.modele||''}</td>
           <td>${i.serie||''}</td>
-          <td style="text-align:center">${i.nb||1}</td>
+          <td style="text-align:left">${i.nb||1}</td>
           <td>${i.numInv||''}</td>
-          <td style="text-align:center">${i.annee||''}</td>
+          <td style="text-align:left">${i.annee||''}</td>
         </tr>`;}).join('')}</tbody>
       </table>`;
     } else {
-      sections+=`<table class="fiche-table" style="margin-top:4px">
-        <thead>
-          <tr><th colspan="6" class="cat-header">${cg}</th></tr>
-          <tr>
-            <th style="width:22%">Désignation <br> الصنف</th>
-            <th style="width:26%">Modèle <br> النوع</th>
-            <th style="width:20%">N°Série <br> رقم التسلسل</th>
-            <th style="width:8%">Nombre <br> العدد</th>
-            <th style="width:13%">N°Inventaire <br> رقم الجرد</th>
-            <th style="width:11%">Année <br> السنة</th>
-          </tr>
-        </thead>
+      sections+=`<table class="fiche-table">
+       <thead>
+		<tr><th colspan="6" class="cat-header">${cg}</th></tr>
+		<tr>
+            <th style="width:21%">Désignation <br> الصنف</th>
+            <th style="width:23%">Modèle <br> النوع</th>
+            <th style="width:27%">N°Série <br> رقم التسلسل</th>
+            <th style="width:5%">Nombre <br> العدد</th>
+            <th style="width:15%">N°Inventaire <br> رقم الجرد</th>
+            <th style="width:9%">Année <br> السنة</th>
+        </tr>
+		</thead>
         <tbody>${rows.map(i=>{
           const ar_aff=trAff(i.affectation||'');
           return `<tr>
           <td>${i.nom||''}</td>
           <td>${i.modele||''}</td>
           <td>${i.serie||''}</td>
-          <td style="text-align:center">${i.nb||1}</td>
+          <td style="text-align:left">${i.nb||1}</td>
           <td>${i.numInv||''}</td>
-          <td style="text-align:center">${i.annee||''}</td>
+          <td style="text-align:left">${i.annee||''}</td>
         </tr>`;}).join('')}</tbody>
       </table>`;
     }
@@ -1434,16 +1434,16 @@ function buildCumulSection(grouped, isInfoElec){
           <tr><th colspan="5" class="cat-header">${cat}</th></tr>
           <tr>
             <th style="width:18%">Désignation <br> الصنف</th>
-            <th style="width:20%">Modèle <br> النوع</th>
-            <th style="width:7%">Nombre <br> العدد</th>
-            <th style="width:38%">Affectation <br> الهيكل المستفيد</th>
-            <th style="width:17%">N° Inventaire <br> رقم الجرد</th>
+            <th style="width:19%">Modèle <br> النوع</th>
+            <th style="width:4%">Nombre <br> العدد</th>
+            <th style="width:44%">Affectation <br> الهيكل المستفيد</th>
+            <th style="width:15%">N° Inventaire <br> رقم الجرد</th>
           </tr>
         </thead>
         <tbody>${sorted.map(r=>`<tr>
           <td>${r.nom}</td>
           <td>${r.modele||''}</td>
-          <td style="text-align:center">${r.nombre}</td>
+          <td style="text-align:left">${r.nombre}</td>
           <td>${r.affectations.join(' + ')}</td>
           <td>${r.numInv||''}</td>
         </tr>`).join('')}</tbody>
@@ -1454,16 +1454,16 @@ function buildCumulSection(grouped, isInfoElec){
           <tr><th colspan="5" class="cat-header">${cat}</th></tr>
           <tr>
             <th style="width:18%">Désignation <br> الصنف</th>
-            <th style="width:18%">Modèle <br> النوع</th>
-            <th style="width:7%">Nombre <br> العدد</th>
-            <th style="width:38%">Affectation <br> الهيكل المستفيد</th>
-            <th style="width:17%">N° Inventaire <br> رقم الجرد</th>
+            <th style="width:19%">Modèle <br> النوع</th>
+            <th style="width:4%">Nombre <br> العدد</th>
+            <th style="width:44%">Affectation <br> الهيكل المستفيد</th>
+            <th style="width:15%">N° Inventaire <br> رقم الجرد</th>
           </tr>
         </thead>
         <tbody>${sorted.map(r=>`<tr>
           <td>${r.nom}</td>
           <td>${r.modele||''}</td>
-          <td style="text-align:center">${r.nombre}</td>
+          <td style="text-align:left">${r.nombre}</td>
           <td>${r.affectations.join(' + ')}</td>
           <td>${r.numInv||''}</td>
         </tr>`).join('')}</tbody>
@@ -1493,7 +1493,7 @@ function buildCumulDoc(){
       const dataAnnee=data.filter(i=>String(i.annee||'Sans année')===annee);
       const grouped=buildCumulData(dataAnnee);
       const sections=buildCumulSection(grouped,isInfoElec);
-      body+=`<div class="cumul-titre" style="margin-top:${annee===annees[0]?'0':'10px'}">${annee!=='Sans année'?'Inventaire cumulé année '+annee:'Articles sans année'}</div>${sections}`;
+      body+=`<div class="cumul-titre" style="margin-top:${annee===annees[0]?'0':'10px'}">${annee!=='Sans année'?' Inventaire cumulé   année   الجرد التراكمي لسنة  '+annee:'Articles sans année'}</div>${sections}`;
     });
   }
 
